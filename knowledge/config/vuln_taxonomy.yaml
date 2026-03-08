@@ -1,0 +1,325 @@
+# Ghost-Hunter Vulnerability Taxonomy
+# ====================================
+# Taxonomie normalisée des vulnérabilités web
+# Utilisée pour mapper les différentes sources vers des types standards
+
+vuln_types:
+  # === INJECTION ===
+  sqli:
+    display_name: "SQL Injection"
+    aliases:
+      - sql_injection
+      - sql-injection
+      - blind_sqli
+      - union_sqli
+      - error_based_sqli
+      - time_based_sqli
+    cwe:
+      - CWE-89
+    category: injection
+    severity_default: high
+    
+  xss:
+    display_name: "Cross-Site Scripting"
+    aliases:
+      - cross_site_scripting
+      - reflected_xss
+      - stored_xss
+      - dom_xss
+      - dom_based_xss
+      - persistent_xss
+    cwe:
+      - CWE-79
+    category: injection
+    severity_default: medium
+    
+  ssti:
+    display_name: "Server-Side Template Injection"
+    aliases:
+      - server_side_template_injection
+      - template_injection
+      - jinja2_injection
+      - freemarker_injection
+      - twig_injection
+    cwe:
+      - CWE-1336
+      - CWE-94
+    category: injection
+    severity_default: critical
+    
+  xxe:
+    display_name: "XML External Entity"
+    aliases:
+      - xml_external_entity
+      - xml_injection
+      - xxe_injection
+    cwe:
+      - CWE-611
+    category: injection
+    severity_default: high
+    
+  nosqli:
+    display_name: "NoSQL Injection"
+    aliases:
+      - nosql_injection
+      - mongodb_injection
+      - nosql-injection
+    cwe:
+      - CWE-943
+    category: injection
+    severity_default: high
+    
+  ldapi:
+    display_name: "LDAP Injection"
+    aliases:
+      - ldap_injection
+      - ldap-injection
+    cwe:
+      - CWE-90
+    category: injection
+    severity_default: high
+    
+  xpath:
+    display_name: "XPath Injection"
+    aliases:
+      - xpath_injection
+      - xpath-injection
+    cwe:
+      - CWE-643
+    category: injection
+    severity_default: high
+    
+  # === RCE / COMMAND INJECTION ===
+  rce:
+    display_name: "Remote Code Execution"
+    aliases:
+      - remote_code_execution
+      - code_execution
+      - command_injection
+      - os_command_injection
+      - shell_injection
+    cwe:
+      - CWE-78
+      - CWE-77
+      - CWE-94
+      - CWE-95
+    category: rce
+    severity_default: critical
+    
+  deserialization:
+    display_name: "Insecure Deserialization"
+    aliases:
+      - insecure_deserialization
+      - object_injection
+      - pickle_injection
+      - java_deserialization
+      - php_deserialization
+    cwe:
+      - CWE-502
+    category: rce
+    severity_default: critical
+    
+  lfi:
+    display_name: "Local File Inclusion"
+    aliases:
+      - local_file_inclusion
+      - file_inclusion
+      - lfi_rce
+    cwe:
+      - CWE-98
+    category: rce
+    severity_default: high
+    
+  rfi:
+    display_name: "Remote File Inclusion"
+    aliases:
+      - remote_file_inclusion
+    cwe:
+      - CWE-98
+    category: rce
+    severity_default: critical
+    
+  # === ACCESS CONTROL ===
+  idor:
+    display_name: "IDOR / BOLA"
+    aliases:
+      - insecure_direct_object_reference
+      - bola
+      - broken_object_level_authorization
+      - horizontal_privilege_escalation
+      - direct_object_reference
+    cwe:
+      - CWE-639
+      - CWE-284
+    category: access_control
+    severity_default: high
+    
+  bfla:
+    display_name: "Broken Function Level Authorization"
+    aliases:
+      - broken_function_level_authorization
+      - function_level_access_control
+      - vertical_privilege_escalation
+    cwe:
+      - CWE-285
+    category: access_control
+    severity_default: high
+    
+  authz_bypass:
+    display_name: "Authorization Bypass"
+    aliases:
+      - authorization_bypass
+      - privilege_escalation
+      - broken_access_control
+      - access_control_bypass
+    cwe:
+      - CWE-285
+      - CWE-862
+      - CWE-863
+    category: access_control
+    severity_default: high
+    
+  authn_bypass:
+    display_name: "Authentication Bypass"
+    aliases:
+      - authentication_bypass
+      - auth_bypass
+      - login_bypass
+    cwe:
+      - CWE-287
+    category: access_control
+    severity_default: critical
+    
+  # === REQUEST FORGERY ===
+  ssrf:
+    display_name: "Server-Side Request Forgery"
+    aliases:
+      - server_side_request_forgery
+      - ssrf_blind
+      - ssrf_full
+    cwe:
+      - CWE-918
+    category: request_forgery
+    severity_default: high
+    
+  csrf:
+    display_name: "Cross-Site Request Forgery"
+    aliases:
+      - cross_site_request_forgery
+      - xsrf
+    cwe:
+      - CWE-352
+    category: request_forgery
+    severity_default: medium
+    
+  open_redirect:
+    display_name: "Open Redirect"
+    aliases:
+      - url_redirect
+      - unvalidated_redirect
+      - redirect_injection
+    cwe:
+      - CWE-601
+    category: request_forgery
+    severity_default: medium
+    
+  # === FILE HANDLING ===
+  path_traversal:
+    display_name: "Path Traversal"
+    aliases:
+      - directory_traversal
+      - dot_dot_slash
+      - file_path_traversal
+    cwe:
+      - CWE-22
+    category: file_handling
+    severity_default: high
+    
+  file_upload:
+    display_name: "Unrestricted File Upload"
+    aliases:
+      - unrestricted_upload
+      - arbitrary_file_upload
+      - malicious_file_upload
+    cwe:
+      - CWE-434
+    category: file_handling
+    severity_default: critical
+    
+  # === DATA EXPOSURE ===
+  info_disclosure:
+    display_name: "Information Disclosure"
+    aliases:
+      - information_disclosure
+      - sensitive_data_exposure
+      - data_leak
+      - pii_exposure
+    cwe:
+      - CWE-200
+      - CWE-209
+    category: data_exposure
+    severity_default: medium
+    
+  # === API SPECIFIC ===
+  mass_assignment:
+    display_name: "Mass Assignment"
+    aliases:
+      - mass_assignment_vulnerability
+      - parameter_pollution
+      - attribute_pollution
+    cwe:
+      - CWE-915
+    category: api
+    severity_default: medium
+    
+  graphql_introspection:
+    display_name: "GraphQL Introspection"
+    aliases:
+      - graphql_info_disclosure
+      - graphql_schema_exposure
+    cwe:
+      - CWE-200
+    category: api
+    severity_default: low
+    
+  rate_limit_bypass:
+    display_name: "Rate Limit Bypass"
+    aliases:
+      - rate_limiting_bypass
+      - brute_force
+    cwe:
+      - CWE-307
+    category: api
+    severity_default: medium
+    
+  # === JWT / AUTH TOKENS ===
+  jwt_none_alg:
+    display_name: "JWT None Algorithm"
+    aliases:
+      - jwt_algorithm_confusion
+      - jwt_alg_none
+    cwe:
+      - CWE-327
+    category: auth_tokens
+    severity_default: critical
+    
+  jwt_weak_secret:
+    display_name: "JWT Weak Secret"
+    aliases:
+      - jwt_brute_force
+      - jwt_secret_leak
+    cwe:
+      - CWE-521
+    category: auth_tokens
+    severity_default: high
+
+# Mapping des catégories vers les priorités de test
+category_priority:
+  rce: 1           # Toujours tester en premier
+  injection: 2
+  access_control: 3
+  request_forgery: 4
+  file_handling: 5
+  auth_tokens: 6
+  api: 7
+  data_exposure: 8

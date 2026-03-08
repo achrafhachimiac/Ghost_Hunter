@@ -1,0 +1,692 @@
+<!-- AI Triage View Template -->
+<div class="space-y-4 fade-in">
+    <!-- Stats -->
+    <div class="grid grid-cols-4 gap-4">
+        <div class="glass rounded-xl p-4 text-center">
+            <p class="text-2xl font-bold text-white">{{ triageHistory.length }}</p>
+            <p class="text-xs text-gray-400">Total Triaged</p>
+        </div>
+        <div class="glass rounded-xl p-4 text-center">
+            <p class="text-2xl font-bold text-green-400">{{ triageHistory.filter(t => t.interesting).length }}</p>
+            <p class="text-xs text-gray-400">Interesting</p>
+        </div>
+        <div class="glass rounded-xl p-4 text-center">
+            <p class="text-2xl font-bold text-gray-400">{{ triageHistory.filter(t => !t.interesting).length }}</p>
+            <p class="text-xs text-gray-400">Not Interesting</p>
+        </div>
+        <div class="glass rounded-xl p-4 text-center">
+            <p class="text-2xl font-bold text-purple-400">{{ triageHistory.reduce((sum, t) => sum + (t.tokens || 0), 0) }}</p>
+            <p class="text-xs text-gray-400">Tokens Used</p>
+        </div>
+    </div>
+    
+    <!-- Controls -->
+    <div class="glass rounded-xl p-4 flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+            <select v-model="triageFilter" class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2">
+                <option value="all">All Results</option>
+                <option value="interesting">Interesting Only</option>
+                <option value="not_interesting">Not Interesting</option>
+            </select>
+            <span class="text-gray-400 text-sm">{{ filteredTriageHistory.length }} results</span>
+            
+            <!-- Bulk Selection Controls -->
+            <div class="border-l border-gray-700 pl-4 flex items-center space-x-3">
+                <label class="flex items-center space-x-2 cursor-pointer text-sm">
+                    <input type="checkbox" 
+                           :checked="allInterestingSelected" 
+                           @change="toggleSelectAllTriage"
+                           class="w-4 h-4 rounded bg-gray-700 border-gray-600 text-purple-500 focus:ring-purple-500">
+                    <span class="text-gray-400">Select All Interesting</span>
+                </label>
+                <span v-if="selectedTriageCount > 0" class="text-purple-400 text-sm font-semibold">
+                    {{ selectedTriageCount }} selected
+                </span>
+            </div>
+        </div>
+        
+        <div class="flex items-center space-x-2">
+            <!-- Bulk Test Button -->
+            <button v-if="selectedTriageCount > 0 && !bulkTestingActive" 
+                    @click="runBulkTriageTest"
+                    class="bg-orange-600 hover:bg-orange-700 px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center space-x-2">
+                <i class="fas fa-bolt"></i>
+                <span>Test Selected ({{ selectedTriageCount }})</span>
+            </button>
+            
+            <!-- Bulk Test Progress -->
+            <div v-if="bulkTestingActive" class="flex items-center space-x-3 bg-orange-600/20 px-4 py-2 rounded-lg">
+                <i class="fas fa-spinner fa-spin text-orange-400"></i>
+                <span class="text-orange-400 text-sm">
+                    Testing {{ bulkTestProgress.current }}/{{ bulkTestProgress.total }}
+                </span>
+                <span class="text-gray-500 text-xs truncate max-w-[200px]">
+                    {{ bulkTestProgress.currentItem }}
+                </span>
+                <button @click="cancelBulkTest" class="text-red-400 hover:text-red-300 text-xs">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+            </div>
+            
+            <button @click="clearTriageHistory" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-sm">
+                <i class="fas fa-trash mr-1"></i> Clear History
+            </button>
+        </div>
+    </div>
+    
+    <!-- Triage Results List -->
+    <div class="space-y-4">
+        <div v-for="(triage, idx) in filteredTriageHistory" :key="idx" 
+             class="glass rounded-xl p-5 border-l-4 transition hover:bg-gray-800/50"
+             :class="[
+                 triage.tested && triage.testResult?.findings?.length ? 'border-red-500' : triage.interesting ? 'border-green-500' : 'border-gray-600',
+                 isTriageSelected(triage) ? 'ring-2 ring-purple-500/50' : ''
+             ]">
+            <!-- Header -->
+            <div class="flex items-start justify-between mb-3">
+                <div class="flex items-center space-x-3">
+                    <!-- Checkbox for bulk selection -->
+                    <input type="checkbox" 
+                           :checked="isTriageSelected(triage)"
+                           @change="toggleTriageSelection(triage)"
+                           :disabled="bulkTestingActive"
+                           class="w-4 h-4 rounded bg-gray-700 border-gray-600 text-purple-500 focus:ring-purple-500 cursor-pointer">
+                    
+                    <span :class="methodClass(triage.method)" class="text-xs font-mono px-2 py-0.5 rounded">{{ triage.method }}</span>
+                    <span v-if="triage.tested && triage.testResult?.findings?.length" class="bg-red-500/20 text-red-400 px-2 py-0.5 rounded text-xs font-semibold">
+                        <i class="fas fa-bug mr-1"></i>VULNERABLE
+                    </span>
+                    <span v-else-if="triage.tested" class="bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded text-xs">
+                        <i class="fas fa-shield-alt mr-1"></i>Tested
+                    </span>
+                    <span v-else-if="triage.interesting" class="bg-green-500/20 text-green-400 px-2 py-0.5 rounded text-xs font-semibold">
+                        <i class="fas fa-check-circle mr-1"></i>INTERESTING
+                    </span>
+                    <span v-else class="bg-gray-500/20 text-gray-400 px-2 py-0.5 rounded text-xs">
+                        <i class="fas fa-minus-circle mr-1"></i>Not Interesting
+                    </span>
+                    <span class="text-xs text-gray-500">{{ triage.timestamp }}</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="text-sm" :class="triage.confidence >= 70 ? 'text-green-400' : triage.confidence >= 40 ? 'text-yellow-400' : 'text-gray-400'">
+                        {{ triage.confidence }}% confidence
+                    </span>
+                    <!-- STEALTH MODE TOGGLE -->
+                    <label class="flex items-center space-x-1 text-xs cursor-pointer ml-2" :title="'Enable Puppeteer stealth mode to bypass Friendly Captcha and anti-bot protections'">
+                        <input type="checkbox" v-model="triage.useStealth" class="w-3 h-3 rounded">
+                        <span class="text-purple-400"><i class="fas fa-user-ninja"></i> Stealth</span>
+                    </label>
+                    <!-- TEST BUTTON (initial test) -->
+                    <button v-if="triage.interesting && !triage.tested" 
+                            @click="testTriageItem(triage, idx)"
+                            :disabled="triage.testing"
+                            class="ml-3 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 px-3 py-1 rounded text-sm font-semibold">
+                        <i v-if="triage.testing" class="fas fa-spinner fa-spin mr-1"></i>
+                        <i v-else class="fas fa-bolt mr-1"></i>
+                        {{ triage.testing ? 'Testing...' : 'Test' }}
+                    </button>
+                    <!-- RE-TEST BUTTON (already tested) -->
+                    <button v-if="triage.tested" 
+                            @click="testTriageItem(triage, idx)"
+                            :disabled="triage.testing"
+                            class="ml-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 px-3 py-1 rounded text-sm font-semibold">
+                        <i v-if="triage.testing" class="fas fa-spinner fa-spin mr-1"></i>
+                        <i v-else class="fas fa-redo mr-1"></i>
+                        {{ triage.testing ? 'Testing...' : 'Re-test' }}
+                    </button>
+                    <!-- MULTI-ROUND ATTACK BUTTON -->
+                    <button v-if="triage.interesting" 
+                            @click="startMultiRoundAttack(triage, idx)"
+                            :disabled="triage.multiRoundRunning"
+                            class="ml-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 px-3 py-1 rounded text-sm font-semibold"
+                            title="Launch adaptive multi-round attack with WAF bypass learning">
+                        <i v-if="triage.multiRoundRunning" class="fas fa-spinner fa-spin mr-1"></i>
+                        <i v-else class="fas fa-layer-group mr-1"></i>
+                        {{ triage.multiRoundRunning ? 'Running...' : 'Multi-Round' }}
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Endpoint with Debug Tooltip -->
+            <div class="mb-3 relative group/debug">
+                <p class="font-mono text-sm bg-gray-800 p-2 rounded cursor-help flex items-center justify-between">
+                    <span>
+                        <span class="text-gray-400">{{ triage.host }}</span>
+                        <span class="text-white">{{ triage.path }}</span>
+                    </span>
+                    <span v-if="triage.debug_prompt" class="text-xs text-purple-400 opacity-60 group-hover/debug:opacity-100">
+                        <i class="fas fa-bug mr-1"></i>Hover for AI Debug
+                    </span>
+                </p>
+                
+                <!-- Debug Tooltip (shown on hover) -->
+                <div v-if="triage.debug_prompt" 
+                     class="absolute left-0 top-full mt-2 z-50 hidden group-hover/debug:block w-full max-w-4xl">
+                    <div class="bg-gray-900 border border-purple-500/50 rounded-xl shadow-2xl overflow-hidden">
+                        <!-- Header -->
+                        <div class="bg-purple-900/50 px-4 py-2 border-b border-purple-500/30 flex items-center justify-between">
+                            <span class="text-purple-300 font-semibold text-sm">
+                                <i class="fas fa-robot mr-2"></i>AI Debug Info
+                            </span>
+                            <span class="text-xs text-gray-400">
+                                {{ triage.model }} • {{ triage.tokens }} tokens
+                            </span>
+                        </div>
+                        
+                        <!-- Content -->
+                        <div class="p-4 max-h-[60vh] overflow-y-auto space-y-4">
+                            <!-- Prompt Section -->
+                            <div>
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-xs text-yellow-400 uppercase font-semibold">
+                                        <i class="fas fa-paper-plane mr-1"></i> Prompt Sent
+                                    </span>
+                                    <button @click.stop="copyToClipboard(triage.debug_prompt)" 
+                                            class="text-xs text-gray-400 hover:text-white">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                </div>
+                                <pre class="bg-gray-800 p-3 rounded text-xs text-gray-300 overflow-x-auto whitespace-pre-wrap max-h-[30vh] overflow-y-auto font-mono">{{ triage.debug_prompt }}</pre>
+                            </div>
+                            
+                            <!-- Response Section -->
+                            <div>
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-xs text-green-400 uppercase font-semibold">
+                                        <i class="fas fa-reply mr-1"></i> AI Response
+                                    </span>
+                                    <button @click.stop="copyToClipboard(triage.debug_response)" 
+                                            class="text-xs text-gray-400 hover:text-white">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                </div>
+                                <pre class="bg-gray-800 p-3 rounded text-xs text-gray-300 overflow-x-auto whitespace-pre-wrap max-h-[20vh] overflow-y-auto font-mono">{{ triage.debug_response }}</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ═══════════════════════════════════════════════════════════════ -->
+            <!-- ORIGINAL REQUEST/RESPONSE (captured via Burp/proxy) -->
+            <!-- ═══════════════════════════════════════════════════════════════ -->
+            <div v-if="triage.original_request" class="mb-3 bg-indigo-900/30 rounded-lg p-4 border border-indigo-700/50">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs text-indigo-400 uppercase font-semibold">
+                        <i class="fas fa-camera mr-1"></i> Captured Request/Response (Original)
+                    </span>
+                    <button @click="triage.showOriginal = !triage.showOriginal" 
+                            class="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
+                        <i :class="triage.showOriginal ? 'fa-chevron-down' : 'fa-chevron-right'" class="fas"></i>
+                        {{ triage.showOriginal ? 'Hide' : 'Show' }} Details
+                    </button>
+                </div>
+                
+                <!-- Quick Summary (always visible) -->
+                <div class="flex items-center gap-4 text-xs text-gray-400">
+                    <span v-if="triage.original_response?.status_code" 
+                          :class="triage.original_response.status_code < 400 ? 'text-green-400' : 'text-red-400'">
+                        <i class="fas fa-reply mr-1"></i>HTTP {{ triage.original_response.status_code }}
+                    </span>
+                    <span v-if="triage.original_response?.time_ms" class="text-gray-500">
+                        <i class="fas fa-clock mr-1"></i>{{ triage.original_response.time_ms }}ms
+                    </span>
+                    <span v-if="triage.original_request?.headers" class="text-gray-500">
+                        <i class="fas fa-list mr-1"></i>{{ Object.keys(triage.original_request.headers).length }} headers
+                    </span>
+                    <span v-if="triage.original_request?.body" class="text-gray-500">
+                        <i class="fas fa-file-alt mr-1"></i>{{ triage.original_request.body.length }} bytes body
+                    </span>
+                </div>
+                
+                <!-- Expanded Details -->
+                <div v-if="triage.showOriginal" class="mt-3 space-y-3">
+                    <!-- ORIGINAL REQUEST -->
+                    <div class="bg-gray-900/80 border border-gray-700 rounded p-3 text-xs">
+                        <div class="flex items-center justify-between mb-2 pb-2 border-b border-gray-700">
+                            <span class="font-semibold text-yellow-400">
+                                <i class="fas fa-arrow-up mr-1"></i> Original Request
+                            </span>
+                        </div>
+                        
+                        <!-- Request URL -->
+                        <div class="mb-2">
+                            <span class="text-gray-500">{{ triage.original_request.method }}</span>
+                            <code class="ml-1 text-blue-300 break-all">{{ triage.original_request.url }}</code>
+                        </div>
+                        
+                        <!-- Request Headers -->
+                        <details v-if="triage.original_request.headers && Object.keys(triage.original_request.headers).length" class="mb-2">
+                            <summary class="text-gray-500 cursor-pointer hover:text-gray-400">
+                                Request Headers ({{ Object.keys(triage.original_request.headers).length }})
+                            </summary>
+                            <pre class="mt-1 bg-black/50 p-2 rounded overflow-x-auto text-green-300 max-h-40">{{ formatHeaders(triage.original_request.headers) }}</pre>
+                        </details>
+                        
+                        <!-- Request Cookies -->
+                        <details v-if="triage.original_request.cookies && Object.keys(triage.original_request.cookies).length" class="mb-2">
+                            <summary class="text-gray-500 cursor-pointer hover:text-gray-400">
+                                Cookies ({{ Object.keys(triage.original_request.cookies).length }})
+                            </summary>
+                            <pre class="mt-1 bg-black/50 p-2 rounded overflow-x-auto text-orange-300 max-h-40">{{ formatHeaders(triage.original_request.cookies) }}</pre>
+                        </details>
+                        
+                        <!-- Request Body -->
+                        <details v-if="triage.original_request.body" class="mb-2">
+                            <summary class="text-gray-500 cursor-pointer hover:text-gray-400">
+                                Request Body ({{ triage.original_request.body.length }} bytes)
+                            </summary>
+                            <pre class="mt-1 bg-black/50 p-2 rounded overflow-x-auto text-yellow-300 max-h-40">{{ formatBody(triage.original_request.body, triage.original_request.body_json) }}</pre>
+                        </details>
+                        
+                        <!-- Query Params -->
+                        <details v-if="triage.original_request.query_params && Object.keys(triage.original_request.query_params).length" class="mb-2">
+                            <summary class="text-gray-500 cursor-pointer hover:text-gray-400">
+                                Query Parameters ({{ Object.keys(triage.original_request.query_params).length }})
+                            </summary>
+                            <pre class="mt-1 bg-black/50 p-2 rounded overflow-x-auto text-purple-300 max-h-40">{{ formatHeaders(triage.original_request.query_params) }}</pre>
+                        </details>
+                    </div>
+                    
+                    <!-- ORIGINAL RESPONSE -->
+                    <div v-if="triage.original_response" class="bg-gray-900/80 border border-gray-700 rounded p-3 text-xs">
+                        <div class="flex items-center justify-between mb-2 pb-2 border-b border-gray-700">
+                            <span class="font-semibold text-cyan-400">
+                                <i class="fas fa-arrow-down mr-1"></i> Original Response
+                            </span>
+                            <div class="flex items-center gap-2">
+                                <span v-if="triage.original_response.time_ms" class="text-gray-500">
+                                    {{ triage.original_response.time_ms }}ms
+                                </span>
+                                <span v-if="triage.original_response.status_code" 
+                                      :class="triage.original_response.status_code < 400 ? 'text-green-400' : 'text-red-400'">
+                                    HTTP {{ triage.original_response.status_code }}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <!-- Response Headers -->
+                        <details v-if="triage.original_response.headers && Object.keys(triage.original_response.headers).length" class="mb-2">
+                            <summary class="text-gray-500 cursor-pointer hover:text-gray-400">
+                                Response Headers ({{ Object.keys(triage.original_response.headers).length }})
+                            </summary>
+                            <pre class="mt-1 bg-black/50 p-2 rounded overflow-x-auto text-green-300 max-h-40">{{ formatHeaders(triage.original_response.headers) }}</pre>
+                        </details>
+                        
+                        <!-- Response Body -->
+                        <details v-if="triage.original_response.body" class="mb-2" open>
+                            <summary class="text-gray-500 cursor-pointer hover:text-gray-400">
+                                Response Body ({{ triage.original_response.body.length }} bytes)
+                            </summary>
+                            <pre class="mt-1 bg-black/50 p-2 rounded overflow-x-auto text-gray-300 max-h-60">{{ formatBody(triage.original_response.body) }}</pre>
+                        </details>
+                    </div>
+                    
+                    <!-- No response captured -->
+                    <div v-else class="text-center text-gray-500 py-2 text-xs">
+                        <i class="fas fa-exclamation-circle mr-1"></i>
+                        No response captured for this request
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Test Results (if tested) -->
+            <div v-if="triage.tested && triage.testResult" class="mb-3 bg-gray-800/70 rounded-lg p-4 border border-gray-700">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs text-gray-400 uppercase">Test Results</span>
+                    <div class="flex items-center space-x-3">
+                        <!-- View Strategy Popup Button -->
+                        <button v-if="triage.testResult.strategy_prompt" 
+                                @click="triage.showStrategyPopup = true"
+                                class="text-xs bg-purple-600/30 text-purple-300 hover:bg-purple-600/50 px-2 py-1 rounded flex items-center gap-1 border border-purple-500/30">
+                            <i class="fas fa-robot"></i> View Strategy
+                        </button>
+                        <span class="text-xs text-gray-500">
+                            {{ triage.testResult.payloads_tested }} payloads • {{ triage.testResult.vuln_class }}
+                        </span>
+                    </div>
+                </div>
+                
+                <!-- ═══════════════════════════════════════════════════════════════ -->
+                <!-- STRATEGIST DEBUG POPUP MODAL -->
+                <!-- ═══════════════════════════════════════════════════════════════ -->
+                <div v-if="triage.showStrategyPopup" 
+                     class="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+                     @click.self="triage.showStrategyPopup = false">
+                    <div class="bg-gray-900 border border-purple-500/50 rounded-xl shadow-2xl max-w-5xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+                        <!-- Modal Header -->
+                        <div class="bg-purple-900/50 px-6 py-4 border-b border-purple-500/30 flex items-center justify-between shrink-0">
+                            <div class="flex items-center gap-3">
+                                <i class="fas fa-brain text-purple-400 text-xl"></i>
+                                <div>
+                                    <h3 class="text-lg font-bold text-white">AI Strategist Debug</h3>
+                                    <p class="text-xs text-gray-400">
+                                        {{ triage.testResult.strategy_model || 'Unknown Model' }} • 
+                                        {{ triage.testResult.strategy_tokens || 0 }} tokens
+                                    </p>
+                                </div>
+                            </div>
+                            <button @click="triage.showStrategyPopup = false" 
+                                    class="text-gray-400 hover:text-white text-xl p-2 hover:bg-gray-700 rounded">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- Modal Content (scrollable) -->
+                        <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                            <!-- Prompt Sent Section -->
+                            <div>
+                                <div class="flex items-center justify-between mb-3">
+                                    <span class="text-sm text-yellow-400 uppercase font-bold flex items-center gap-2">
+                                        <i class="fas fa-paper-plane"></i> Prompt Sent to LLM
+                                    </span>
+                                    <button @click="copyToClipboard(triage.testResult.strategy_prompt)" 
+                                            class="text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 px-3 py-1 rounded flex items-center gap-1">
+                                        <i class="fas fa-copy"></i> Copy Prompt
+                                    </button>
+                                </div>
+                                <pre class="bg-gray-800 border border-gray-700 p-4 rounded-lg text-xs text-gray-300 overflow-x-auto whitespace-pre-wrap max-h-[35vh] overflow-y-auto font-mono">{{ triage.testResult.strategy_prompt }}</pre>
+                            </div>
+                            
+                            <!-- AI Response Section -->
+                            <div>
+                                <div class="flex items-center justify-between mb-3">
+                                    <span class="text-sm text-green-400 uppercase font-bold flex items-center gap-2">
+                                        <i class="fas fa-reply"></i> LLM Response (Strategy)
+                                    </span>
+                                    <button @click="copyToClipboard(triage.testResult.strategy_response)" 
+                                            class="text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 px-3 py-1 rounded flex items-center gap-1">
+                                        <i class="fas fa-copy"></i> Copy Response
+                                    </button>
+                                </div>
+                                <pre class="bg-gray-800 border border-gray-700 p-4 rounded-lg text-xs text-gray-300 overflow-x-auto whitespace-pre-wrap max-h-[35vh] overflow-y-auto font-mono">{{ triage.testResult.strategy_response }}</pre>
+                            </div>
+                        </div>
+                        
+                        <!-- Modal Footer -->
+                        <div class="bg-gray-800 px-6 py-3 border-t border-gray-700 shrink-0 flex justify-end">
+                            <button @click="triage.showStrategyPopup = false"
+                                    class="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded font-medium">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <!-- ═══════════════════════════════════════════════════════════════ -->
+                
+                <!-- Findings -->
+                <div v-if="triage.testResult.findings && triage.testResult.findings.length" class="space-y-2">
+                    <div v-for="finding in triage.testResult.findings" :key="finding.id" 
+                         class="bg-red-900/30 border border-red-700 rounded p-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-red-400 font-semibold">
+                                <i class="fas fa-exclamation-triangle mr-1"></i>
+                                {{ finding.vuln_type }} ({{ finding.vuln_subtype }})
+                            </span>
+                            <span :class="finding.severity === 'critical' ? 'bg-red-600' : finding.severity === 'high' ? 'bg-orange-600' : 'bg-yellow-600'" 
+                                  class="px-2 py-0.5 rounded text-xs uppercase">
+                                {{ finding.severity }}
+                            </span>
+                        </div>
+                        <p class="text-sm text-gray-300 mt-2">{{ finding.analysis }}</p>
+                        <p v-if="finding.payload" class="text-xs text-gray-400 mt-2 font-mono bg-black/30 p-2 rounded">
+                            Payload: {{ finding.payload }}
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- No findings -->
+                <div v-else class="text-center text-gray-500 py-2">
+                    <i class="fas fa-check-circle text-green-500 mr-1"></i>
+                    No vulnerabilities found after {{ triage.testResult.payloads_tested }} payload tests
+                </div>
+                
+                <!-- Injection points -->
+                <div v-if="triage.testResult.injection_points?.length" class="mt-2 text-xs text-gray-500">
+                    <span class="mr-1">Injection points:</span>
+                    <span v-for="ip in triage.testResult.injection_points" :key="ip" class="bg-gray-700 px-1 rounded mr-1">{{ ip }}</span>
+                </div>
+                
+                <!-- Test Details Toggle -->
+                <div v-if="triage.testResult.test_details?.length" class="mt-3">
+                    <button @click="triage.showTestDetails = !triage.showTestDetails" 
+                            class="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1">
+                        <i :class="triage.showTestDetails ? 'fa-chevron-down' : 'fa-chevron-right'" class="fas"></i>
+                        {{ triage.showTestDetails ? 'Hide' : 'Show' }} Test Details ({{ triage.testResult.test_details.length }} requests)
+                    </button>
+                    
+                    <!-- Test Details Content -->
+                    <div v-if="triage.showTestDetails" class="mt-2 space-y-3 max-h-96 overflow-y-auto">
+                        <div v-for="(detail, idx) in triage.testResult.test_details" :key="idx" 
+                             class="bg-gray-900/80 border border-gray-700 rounded p-3 text-xs">
+                            
+                            <!-- Request Header -->
+                            <div class="flex items-center justify-between mb-2 pb-2 border-b border-gray-700">
+                                <span class="font-semibold text-yellow-400">
+                                    <i class="fas fa-arrow-up mr-1"></i> Request #{{ idx + 1 }}
+                                    <span class="text-gray-500 ml-2">{{ detail.injection_point }} ({{ detail.encoding }})</span>
+                                </span>
+                                <div class="flex items-center gap-2">
+                                    <span v-if="detail.response_time_ms" class="text-gray-500">
+                                        {{ detail.response_time_ms }}ms
+                                    </span>
+                                    <span v-if="detail.response?.status_code" 
+                                          :class="detail.response.status_code < 400 ? 'text-green-400' : 'text-red-400'">
+                                        HTTP {{ detail.response.status_code }}
+                                    </span>
+                                    <span v-if="detail.finding" class="bg-red-600 text-white px-1.5 py-0.5 rounded">
+                                        <i class="fas fa-bug mr-1"></i>VULN
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <!-- Payload Used -->
+                            <div class="mb-2 bg-purple-900/30 p-2 rounded">
+                                <span class="text-gray-500">Payload:</span>
+                                <code class="ml-1 text-purple-300 break-all">{{ detail.payload }}</code>
+                            </div>
+                            
+                            <!-- Request URL -->
+                            <div v-if="detail.request" class="mb-2">
+                                <span class="text-gray-500">{{ detail.request.method }}</span>
+                                <code class="ml-1 text-blue-300 break-all">{{ detail.request.url }}</code>
+                                <!-- Cookie/Auth indicators -->
+                                <span v-if="detail.request.has_cookie" class="ml-2 px-1 py-0.5 bg-green-900/50 text-green-300 text-xs rounded">🍪 Cookie</span>
+                                <span v-if="detail.request.has_auth" class="ml-1 px-1 py-0.5 bg-blue-900/50 text-blue-300 text-xs rounded">🔑 Auth</span>
+                            </div>
+                            
+                            <!-- Request Headers (collapsed by default) -->
+                            <details v-if="detail.request?.headers" class="mb-2">
+                                <summary class="text-gray-500 cursor-pointer hover:text-gray-400">
+                                    Request Headers ({{ detail.request.headers_count || Object.keys(detail.request.headers).length }})
+                                    <span v-if="!detail.request.has_cookie" class="ml-2 text-red-400">⚠️ NO COOKIE!</span>
+                                </summary>
+                                <pre class="mt-1 bg-black/50 p-2 rounded overflow-x-auto text-green-300">{{ formatHeaders(detail.request.headers) }}</pre>
+                            </details>
+                            
+                            <!-- Request Body (if present) -->
+                            <details v-if="detail.request?.body_preview" class="mb-2">
+                                <summary class="text-gray-500 cursor-pointer hover:text-gray-400">Request Body</summary>
+                                <pre class="mt-1 bg-black/50 p-2 rounded overflow-x-auto text-yellow-300">{{ detail.request.body_preview }}</pre>
+                            </details>
+                            
+                            <!-- Response -->
+                            <div v-if="detail.response" class="mt-2 pt-2 border-t border-gray-700">
+                                <span class="text-cyan-400 font-semibold">
+                                    <i class="fas fa-arrow-down mr-1"></i> Response ({{ detail.response.body_length }} bytes)
+                                </span>
+                                
+                                <!-- Response Headers -->
+                                <details v-if="detail.response.headers" class="mt-2">
+                                    <summary class="text-gray-500 cursor-pointer hover:text-gray-400">Response Headers</summary>
+                                    <pre class="mt-1 bg-black/50 p-2 rounded overflow-x-auto text-green-300">{{ formatHeaders(detail.response.headers) }}</pre>
+                                </details>
+                                
+                                <!-- Response Body Preview (collapsed by default) -->
+                                <details v-if="detail.response.body_preview" class="mt-2" open>
+                                    <summary class="text-gray-500 cursor-pointer hover:text-gray-400">Response Body (preview - first 2KB)</summary>
+                                    <pre class="mt-1 bg-black/50 p-2 rounded overflow-x-auto text-gray-300 max-h-40 overflow-y-auto">{{ detail.response.body_preview }}</pre>
+                                </details>
+                                
+                                <!-- Full Response Body (expandable) -->
+                                <details v-if="detail.response.body_full && detail.response.body_length > 2000" class="mt-2">
+                                    <summary class="text-yellow-400 cursor-pointer hover:text-yellow-300">
+                                        <i class="fas fa-expand mr-1"></i> View Full Response ({{ detail.response.body_length }} bytes)
+                                    </summary>
+                                    <pre class="mt-1 bg-black/50 p-2 rounded overflow-x-auto text-gray-300 max-h-96 overflow-y-auto">{{ detail.response.body_full }}</pre>
+                                </details>
+                            </div>
+                            
+                            <!-- Error (if any) -->
+                            <div v-if="detail.error" class="mt-2 text-red-400">
+                                <i class="fas fa-exclamation-circle mr-1"></i> Error: {{ detail.error }}
+                            </div>
+                            
+                            <!-- Finding Info -->
+                            <div v-if="detail.finding" class="mt-2 bg-red-900/30 border border-red-700 rounded p-2">
+                                <span class="text-red-400 font-semibold">
+                                    <i class="fas fa-bug mr-1"></i> {{ detail.finding.vuln_type }}
+                                </span>
+                                <span class="text-gray-400 ml-2">{{ detail.finding.severity }} ({{ detail.finding.confidence }}% confidence)</span>
+                                <p v-if="detail.finding.analysis" class="text-gray-300 mt-1">{{ detail.finding.analysis }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Multi-Round Attack Results (if running or completed) -->
+            <div v-if="triage.multiRoundRunning || triage.multiRoundResult" 
+                 class="mb-3 bg-purple-900/30 rounded-lg p-4 border border-purple-700">
+                <div class="flex items-center justify-between mb-3">
+                    <h4 class="text-sm font-semibold text-purple-400">
+                        <i class="fas fa-layer-group mr-2"></i>Multi-Round Attack
+                    </h4>
+                    <span v-if="triage.multiRoundRunning" class="text-purple-400 text-xs">
+                        <i class="fas fa-spinner fa-spin mr-1"></i>{{ triage.multiRoundStatus || 'Running...' }}
+                    </span>
+                    <span v-else-if="triage.multiRoundResult" class="text-green-400 text-xs">
+                        <i class="fas fa-check-circle mr-1"></i>Completed
+                    </span>
+                </div>
+                
+                <!-- Running status -->
+                <div v-if="triage.multiRoundRunning" class="text-center py-4">
+                    <div class="inline-flex items-center gap-3 bg-purple-800/30 px-4 py-2 rounded-lg">
+                        <i class="fas fa-spinner fa-spin text-2xl text-purple-400"></i>
+                        <div class="text-left">
+                            <p class="text-white font-semibold">Attack in Progress</p>
+                            <p class="text-sm text-gray-400">{{ triage.multiRoundStatus }}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Results -->
+                <div v-else-if="triage.multiRoundResult">
+                    <!-- Summary Stats -->
+                    <div class="grid grid-cols-4 gap-3 mb-4">
+                        <div class="bg-gray-800/50 rounded p-2 text-center">
+                            <p class="text-lg font-bold text-white">{{ triage.multiRoundResult.total_rounds || 0 }}</p>
+                            <p class="text-xs text-gray-400">Rounds</p>
+                        </div>
+                        <div class="bg-gray-800/50 rounded p-2 text-center">
+                            <p class="text-lg font-bold text-cyan-400">{{ triage.multiRoundResult.total_attempts || 0 }}</p>
+                            <p class="text-xs text-gray-400">Attempts</p>
+                        </div>
+                        <div class="bg-gray-800/50 rounded p-2 text-center">
+                            <p class="text-lg font-bold" :class="triage.multiRoundResult.findings_count > 0 ? 'text-red-400' : 'text-green-400'">
+                                {{ triage.multiRoundResult.findings_count || 0 }}
+                            </p>
+                            <p class="text-xs text-gray-400">Findings</p>
+                        </div>
+                        <div class="bg-gray-800/50 rounded p-2 text-center">
+                            <p class="text-lg font-bold text-gray-300">{{ Math.round((triage.multiRoundResult.total_time_ms || 0) / 1000) }}s</p>
+                            <p class="text-xs text-gray-400">Duration</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Message -->
+                    <p class="text-sm text-gray-300 mb-3">{{ triage.multiRoundResult.message }}</p>
+                    
+                    <!-- Download Dump Button -->
+                    <button @click="viewMultiRoundHistory(triage)" 
+                            class="text-xs bg-purple-600/30 text-purple-300 hover:bg-purple-600/50 px-3 py-1.5 rounded flex items-center gap-2 border border-purple-500/30">
+                        <i class="fas fa-download"></i>
+                        Download Full Attack Dump
+                    </button>
+                </div>
+            </div>
+            
+            <!-- AI Triage Response Section -->
+            <div class="mb-4 bg-gray-800/70 rounded-lg p-4 border border-gray-700">
+                <div class="flex items-center justify-between mb-3">
+                    <h4 class="text-sm font-semibold text-cyan-400">
+                        <i class="fas fa-brain mr-2"></i>AI Triage Response
+                    </h4>
+                    <span class="text-xs text-gray-500">{{ triage.model || 'Unknown Model' }} • {{ triage.tokens || 0 }} tokens</span>
+                </div>
+                
+                <!-- Reason (AI Analysis) -->
+                <div class="mb-3">
+                    <p class="text-xs text-gray-400 uppercase mb-1">Analysis</p>
+                    <p class="text-sm text-gray-300 bg-gray-900/50 p-3 rounded whitespace-pre-wrap">{{ triage.reason || 'No detailed analysis provided' }}</p>
+                </div>
+                
+                <!-- Suggested Vulns -->
+                <div v-if="triage.suggested_vulns && triage.suggested_vulns.length" class="mb-3">
+                    <p class="text-xs text-gray-400 uppercase mb-1">Suggested Vulnerabilities to Test</p>
+                    <div class="flex flex-wrap gap-2">
+                        <span v-for="vuln in triage.suggested_vulns" :key="vuln" 
+                              class="bg-purple-600/30 text-purple-300 px-3 py-1 rounded text-sm border border-purple-500/50">
+                            <i class="fas fa-bug mr-1"></i>{{ vuln }}
+                        </span>
+                    </div>
+                </div>
+                
+                <!-- Attack Surface Hints (if available) -->
+                <div v-if="triage.attack_surface_hints && triage.attack_surface_hints.length" class="mb-3">
+                    <p class="text-xs text-gray-400 uppercase mb-1">Attack Surface Hints</p>
+                    <ul class="text-sm text-yellow-300 bg-yellow-900/20 p-2 rounded list-disc list-inside">
+                        <li v-for="hint in triage.attack_surface_hints" :key="hint">{{ hint }}</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Send to Strategist Button -->
+            <div v-if="triage.interesting && !triage.tested" class="mb-4">
+                <button @click="sendToStrategist(triage)" 
+                        :disabled="triage.testing"
+                        class="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 disabled:from-gray-600 disabled:to-gray-700 text-white px-4 py-3 rounded-lg font-semibold transition flex items-center justify-center gap-2">
+                    <i v-if="triage.testing" class="fas fa-spinner fa-spin"></i>
+                    <i v-else class="fas fa-rocket"></i>
+                    <span v-if="triage.testing">Sending to Strategist...</span>
+                    <span v-else>Send to Strategist & Attack</span>
+                </button>
+                <p class="text-xs text-gray-500 text-center mt-1">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    The AI Strategist will create an attack plan and execute payloads
+                </p>
+            </div>
+            
+            <!-- Already Tested Indicator -->
+            <div v-if="triage.tested" class="mb-4 bg-green-900/30 border border-green-700 rounded-lg p-3 text-center">
+                <i class="fas fa-check-circle text-green-400 mr-2"></i>
+                <span class="text-green-300">Already sent to Strategist</span>
+            </div>
+            
+            <!-- Footer -->
+            <div class="flex items-center justify-between text-xs text-gray-500 pt-2 border-t border-gray-700">
+                <span><i class="fas fa-robot mr-1"></i>{{ triage.model || 'Unknown Model' }}</span>
+                <span><i class="fas fa-coins mr-1"></i>{{ triage.tokens || 0 }} tokens</span>
+                <span><i class="fas fa-tag mr-1"></i>{{ triage.new_status }}</span>
+            </div>
+        </div>
+        
+        <!-- Empty State -->
+        <div v-if="triageHistory.length === 0" class="glass rounded-xl p-12 text-center">
+            <i class="fas fa-brain text-5xl text-gray-600 mb-4"></i>
+            <h3 class="text-xl font-semibold text-gray-400">No AI Triage Results Yet</h3>
+            <p class="text-gray-500 mt-2">Click "AI Triage" on an endpoint to analyze it</p>
+        </div>
+    </div>
+</div>

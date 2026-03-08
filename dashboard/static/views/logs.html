@@ -1,0 +1,31 @@
+<!-- Logs View Template -->
+<div class="space-y-4 fade-in">
+    <div class="glass rounded-xl p-4 flex items-center space-x-4">
+        <select v-model="selectedLogService" class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2">
+            <option value="all">All Services</option>
+            <option v-for="(info, name) in health.services" :key="name" :value="name">{{ info.name }}</option>
+        </select>
+        <select v-model="logLevelFilter" class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2">
+            <option value="">All Levels</option>
+            <option value="ERROR">Error</option>
+            <option value="WARNING">Warning</option>
+            <option value="INFO">Info</option>
+        </select>
+        <button @click="clearLogs" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg transition">
+            <i class="fas fa-trash mr-1"></i> Clear
+        </button>
+        <label class="flex items-center space-x-2 text-sm text-gray-400">
+            <input type="checkbox" v-model="autoScrollLogs" class="rounded">
+            <span>Auto-scroll</span>
+        </label>
+    </div>
+    
+    <div ref="logsContainer" class="glass rounded-xl p-4 h-[600px] overflow-y-auto terminal bg-gray-950">
+        <div v-for="(log, idx) in combinedLogs" :key="idx" :class="'log-' + log.level.toLowerCase()" class="py-0.5 hover:bg-gray-900">
+            <span class="text-gray-600">[{{ log.timestamp }}]</span>
+            <span class="text-purple-400 mx-1">[{{ log.service }}]</span>
+            <span class="text-gray-500">[{{ log.level }}]</span>
+            {{ log.message }}
+        </div>
+    </div>
+</div>

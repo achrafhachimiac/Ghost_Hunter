@@ -1,0 +1,61 @@
+# API Keys - NE JAMAIS COMMITER
+config/api_keys.yaml
+.env
+*.env
+
+# Data
+data/
+*.db
+*.sqlite
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.venv/
+venv/
+.eggs/
+*.egg-info/
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+
+# Node (Dashboard)
+node_modules/
+dist/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temp
+*.tmp
+*.swp
+knowledge/wordlists/assetnote/dns.txt
+
+# Public-release safety (private artifacts)
+Android/
+docs/f5_rules_dump.txt
+config/burp_scope/
+burp_extension/*scope*.json
+burp_extension/*scope*.xml
+burp_extension/*scope*.txt
+config/scope_*.json
+config/scope.json
+
+# Keep setup scripts/docs, ignore heavy/private local knowledge content
+knowledge/embeddings/**
+knowledge/hacktricks/**
+knowledge/nuclei-templates/**
+knowledge/bug-bounty-reports/**
+knowledge/cheatsheets/**
+knowledge/personal_reports/**
+knowledge/sources/**
+knowledge/wordlists/**
+knowledge/payloads/**

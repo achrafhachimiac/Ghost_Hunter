@@ -1,0 +1,33 @@
+<!-- Findings View Template -->
+<div class="space-y-4 fade-in">
+    <div class="glass rounded-xl p-4 flex items-center justify-between">
+        <select v-model="findingSeverityFilter" class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2">
+            <option value="">All Severities</option>
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+        </select>
+        <span class="text-gray-500">{{ filteredFindings.length }} findings</span>
+    </div>
+    
+    <div v-for="finding in filteredFindings" :key="finding.id" class="glass rounded-xl p-6 border-l-4" :style="{borderColor: severityColor(finding.severity)}">
+        <div class="flex items-start justify-between">
+            <div>
+                <div class="flex items-center space-x-3">
+                    <h3 class="text-lg font-semibold">{{ finding.vuln_type }}</h3>
+                    <span :class="'sev-' + finding.severity" class="text-xs px-2 py-0.5 rounded uppercase">{{ finding.severity }}</span>
+                </div>
+                <p class="text-gray-400 mt-1">{{ finding.endpoint }}</p>
+            </div>
+            <div class="text-right text-sm">
+                <p class="text-gray-400">Confidence: {{ finding.confidence }}%</p>
+            </div>
+        </div>
+    </div>
+    
+    <div v-if="findings.length === 0" class="glass rounded-xl p-12 text-center">
+        <i class="fas fa-shield-alt text-5xl text-gray-600 mb-4"></i>
+        <h3 class="text-xl font-semibold text-gray-400">No Findings Yet</h3>
+    </div>
+</div>

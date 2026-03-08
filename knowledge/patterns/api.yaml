@@ -1,0 +1,46 @@
+# API Security Patterns
+name: api
+description: API vulnerability patterns
+
+patterns:
+  - name: mass_assignment
+    indicators:
+      - "PUT"
+      - "PATCH"
+      - "POST"
+      - "role"
+      - "admin"
+      - "verified"
+    test_cases:
+      - "Add admin=true to request"
+      - "Add role=admin"
+      - "Add verified=true"
+      
+  - name: graphql_introspection
+    indicators:
+      - "graphql"
+      - "__schema"
+      - "query"
+    test_cases:
+      - "Introspection query"
+      - "Batch query abuse"
+      - "Nested query DoS"
+      
+  - name: api_versioning
+    indicators:
+      - "/v1/"
+      - "/v2/"
+      - "/api/"
+    test_cases:
+      - "Access old API versions"
+      - "Version header manipulation"
+      
+  - name: rate_limit_bypass
+    indicators:
+      - "X-Forwarded-For"
+      - "X-Real-IP"
+      - "X-Originating-IP"
+    test_cases:
+      - "Header manipulation"
+      - "IP rotation"
+      - "Endpoint variation"

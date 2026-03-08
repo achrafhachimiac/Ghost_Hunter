@@ -1,0 +1,24 @@
+# Ghost-Hunter Knowledge Base
+# ===========================
+# Ignore les sources brutes et les fichiers générés
+
+# Sources téléchargées (volumineux, re-téléchargeables)
+sources/
+
+# ChromaDB database (généré, re-buildable)
+embeddings/*.sqlite3
+embeddings/index/
+embeddings/chroma.sqlite3
+
+# Garder le .gitkeep
+!embeddings/.gitkeep
+
+# Cache Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Fichiers temporaires
+*.tmp
+*.temp
+.DS_Store

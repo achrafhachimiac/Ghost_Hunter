@@ -1,0 +1,33 @@
+# IDOR Vulnerability Patterns
+name: idor
+description: Insecure Direct Object Reference patterns
+
+patterns:
+  - name: numeric_id
+    indicators:
+      - "id="
+      - "user_id"
+      - "account_id"
+      - "order_id"
+    test_cases:
+      - "Increment/decrement ID"
+      - "Use other user's ID"
+      - "Negative ID values"
+      
+  - name: uuid_enumeration
+    indicators:
+      - "uuid"
+      - "[a-f0-9]{8}-[a-f0-9]{4}"
+    test_cases:
+      - "UUID from other endpoints"
+      - "Predictable UUID generation"
+      
+  - name: file_reference
+    indicators:
+      - "filename"
+      - "file_id"
+      - "document"
+      - "attachment"
+    test_cases:
+      - "Path traversal"
+      - "Other user's files"

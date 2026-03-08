@@ -1,0 +1,37 @@
+<!-- Services View Template -->
+<div class="space-y-6 fade-in">
+    <div v-for="(info, name) in health.services" :key="name" class="glass rounded-xl overflow-hidden">
+        <div class="p-4 flex items-center justify-between border-b border-gray-700">
+            <div class="flex items-center space-x-4">
+                <div :class="statusBgClass(info.status)" class="w-3 h-3 rounded-full"></div>
+                <div>
+                    <h3 class="font-semibold">{{ info.name }}</h3>
+                    <p class="text-xs text-gray-500">
+                        <span v-if="info.pid">PID: {{ info.pid }}</span>
+                        <span v-if="info.port"> • Port: {{ info.port }}</span>
+                    </p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2">
+                <span :class="'status-' + info.status" class="text-sm font-medium capitalize">{{ info.status }}</span>
+                <button @click="restartService(name)" class="p-2 hover:bg-gray-700 rounded-lg transition" title="Restart">
+                    <i class="fas fa-redo text-yellow-400"></i>
+                </button>
+                <button v-if="info.status === 'running'" @click="stopService(name)" class="p-2 hover:bg-gray-700 rounded-lg transition" title="Stop">
+                    <i class="fas fa-stop text-red-400"></i>
+                </button>
+                <button v-else @click="startService(name)" class="p-2 hover:bg-gray-700 rounded-lg transition" title="Start">
+                    <i class="fas fa-play text-green-400"></i>
+                </button>
+            </div>
+        </div>
+        <div class="bg-gray-950 p-4 max-h-48 overflow-y-auto terminal">
+            <div v-for="(log, idx) in serviceLogs[name] || []" :key="idx" :class="'log-' + log.level.toLowerCase()" class="py-0.5">
+                <span class="text-gray-600">[{{ log.timestamp }}]</span>
+                <span class="text-gray-500 mx-1">[{{ log.level }}]</span>
+                {{ log.message }}
+            </div>
+            <div v-if="!serviceLogs[name] || serviceLogs[name].length === 0" class="text-gray-600">No logs yet...</div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,42 @@
+<!-- Requests View Template -->
+<div class="space-y-4 fade-in">
+    <div class="glass rounded-xl p-4 flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+            <input v-model="requestFilter" type="text" placeholder="Filter requests..." 
+                   class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:border-purple-500">
+            <select v-model="requestMethodFilter" class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2">
+                <option value="">All Methods</option>
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="PUT">PUT</option>
+                <option value="DELETE">DELETE</option>
+            </select>
+        </div>
+        <span class="text-gray-500">{{ filteredRequests.length }} requests</span>
+    </div>
+    
+    <div class="glass rounded-xl overflow-hidden">
+        <table class="w-full">
+            <thead class="bg-gray-800">
+                <tr>
+                    <th class="px-4 py-3 text-left text-xs text-gray-400 uppercase">Method</th>
+                    <th class="px-4 py-3 text-left text-xs text-gray-400 uppercase">Host</th>
+                    <th class="px-4 py-3 text-left text-xs text-gray-400 uppercase">Path</th>
+                    <th class="px-4 py-3 text-left text-xs text-gray-400 uppercase">Score</th>
+                    <th class="px-4 py-3 text-left text-xs text-gray-400 uppercase">Vulns</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="req in filteredRequests" :key="req.id" class="border-t border-gray-800 hover:bg-gray-800/50 cursor-pointer" @click="selectedRequest = req">
+                    <td class="px-4 py-3"><span :class="methodClass(req.method)" class="text-xs font-mono px-2 py-0.5 rounded">{{ req.method }}</span></td>
+                    <td class="px-4 py-3 text-sm text-gray-400">{{ req.host }}</td>
+                    <td class="px-4 py-3 text-sm max-w-md truncate">{{ req.path }}</td>
+                    <td class="px-4 py-3"><span :class="scoreClass(req.score)" class="font-mono">{{ req.score }}</span></td>
+                    <td class="px-4 py-3 text-xs">
+                        <span v-for="vuln in (req.potential_vulns || []).slice(0, 2)" :key="vuln" class="bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded mr-1">{{ vuln }}</span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

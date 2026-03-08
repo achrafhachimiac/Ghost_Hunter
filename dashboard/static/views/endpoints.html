@@ -1,0 +1,236 @@
+<!-- Endpoints View Template -->
+<div class="space-y-4 fade-in">
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+        <div class="glass rounded-xl p-4 text-center">
+            <p class="text-2xl font-bold text-white">{{ endpointsSummary.total || 0 }}</p>
+            <p class="text-xs text-gray-400">Total</p>
+        </div>
+        <div class="glass rounded-xl p-4 text-center cursor-pointer hover:bg-gray-800" @click="endpointStatusFilter = 'triaged'">
+            <p class="text-2xl font-bold text-blue-400">{{ endpointsSummary.by_status?.triaged || 0 }}</p>
+            <p class="text-xs text-gray-400">Triaged</p>
+        </div>
+        <div class="glass rounded-xl p-4 text-center cursor-pointer hover:bg-gray-800" @click="endpointStatusFilter = 'interesting'">
+            <p class="text-2xl font-bold text-green-400">{{ endpointsSummary.by_status?.interesting || 0 }}</p>
+            <p class="text-xs text-gray-400">Interesting</p>
+        </div>
+        <div class="glass rounded-xl p-4 text-center cursor-pointer hover:bg-gray-800" @click="endpointStatusFilter = 'tested'">
+            <p class="text-2xl font-bold text-purple-400">{{ endpointsSummary.by_status?.tested || 0 }}</p>
+            <p class="text-xs text-gray-400">Tested</p>
+        </div>
+        <div class="glass rounded-xl p-4 text-center cursor-pointer hover:bg-gray-800" @click="endpointStatusFilter = 'deduplicated'">
+            <p class="text-2xl font-bold text-yellow-400">{{ endpointsSummary.by_status?.deduplicated || 0 }}</p>
+            <p class="text-xs text-gray-400">Deduplicated</p>
+        </div>
+        <div class="glass rounded-xl p-4 text-center cursor-pointer hover:bg-gray-800" @click="endpointStatusFilter = 'low_score'">
+            <p class="text-2xl font-bold text-gray-400">{{ endpointsSummary.by_status?.low_score || 0 }}</p>
+            <p class="text-xs text-gray-400">Low Score</p>
+        </div>
+        <div class="glass rounded-xl p-4 text-center cursor-pointer hover:bg-gray-800" @click="endpointStatusFilter = 'out_of_scope'">
+            <p class="text-2xl font-bold text-red-400">{{ endpointsSummary.by_status?.out_of_scope || 0 }}</p>
+            <p class="text-xs text-gray-400">Out of Scope</p>
+        </div>
+    </div>
+    
+    <!-- Filters -->
+    <div class="glass rounded-xl p-4 flex items-center justify-between flex-wrap gap-2">
+        <div class="flex items-center space-x-4 flex-wrap gap-2">
+            <input v-model="endpointFilter" @input="onEndpointFilterChange" type="text" placeholder="Search endpoints..." 
+                   class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:border-purple-500">
+            <input v-model="endpointExcludeFilter" @input="onEndpointExcludeFilterChange" type="text" placeholder="Exclude keywords (comma-sep)..." 
+                   class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:border-red-500 w-56"
+                   title="Exclude endpoints containing these keywords (comma-separated, e.g. 'event-logs,analytics')">
+            <select v-model="endpointStatusFilter" @change="onEndpointStatusFilterChange" class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2">
+                <option value="">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="triaged">Triaged</option>
+                <option value="interesting">Interesting</option>
+                <option value="tested">Tested</option>
+                <option value="low_score">Low Score</option>
+                <option value="out_of_scope">Out of Scope</option>
+            </select>
+            <select v-model="endpointMethodFilter" class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2">
+                <option value="">All Methods</option>
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="PUT">PUT</option>
+                <option value="DELETE">DELETE</option>
+            </select>
+            <label class="flex items-center space-x-2 text-sm text-gray-400 cursor-pointer">
+                <input type="checkbox" v-model="hideOutOfScope" class="rounded bg-gray-800 border-gray-600">
+                <span>Hide Out of Scope</span>
+            </label>
+            <label class="flex items-center space-x-2 text-sm text-gray-400 cursor-pointer">
+                <input type="checkbox" v-model="hideStaticAssets" class="rounded bg-gray-800 border-gray-600">
+                <span>Hide Static</span>
+            </label>
+            <label class="flex items-center space-x-2 text-sm text-purple-400 cursor-pointer font-semibold" title="Show only endpoints that have never been triaged">
+                <input type="checkbox" v-model="neverTriagedOnly" @change="onNeverTriagedChange" class="rounded bg-gray-800 border-purple-600 text-purple-500">
+                <span>Never Triaged</span>
+            </label>
+        </div>
+        <div class="flex items-center space-x-2">
+            <!-- Bulk Selection Info -->
+            <span v-if="selectedEndpointCount > 0" class="text-purple-400 text-sm font-semibold mr-2">
+                {{ selectedEndpointCount }} selected
+            </span>
+            
+            <!-- Bulk Triage Button -->
+            <button v-if="selectedEndpointCount > 0 && !bulkTriagingActive" 
+                    @click="runBulkEndpointTriage"
+                    class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center space-x-2">
+                <i class="fas fa-brain"></i>
+                <span>Triage Selected ({{ selectedEndpointCount }})</span>
+            </button>
+            
+            <!-- Bulk Triage Progress -->
+            <div v-if="bulkTriagingActive" class="flex items-center space-x-3 bg-purple-600/20 px-4 py-2 rounded-lg">
+                <i class="fas fa-spinner fa-spin text-purple-400"></i>
+                <span class="text-purple-400 text-sm">
+                    Triaging {{ bulkTriageProgress.current }}/{{ bulkTriageProgress.total }}
+                </span>
+                <span class="text-gray-500 text-xs truncate max-w-[150px]">
+                    {{ bulkTriageProgress.currentItem }}
+                </span>
+                <button @click="cancelBulkTriage" class="text-red-400 hover:text-red-300 text-xs">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <button @click="refreshEndpoints" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm" :disabled="endpointsLoading">
+                <i :class="endpointsLoading ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'" class="mr-1"></i> Refresh
+            </button>
+            <span class="text-gray-500">{{ endpointsTotal }} total</span>
+        </div>
+    </div>
+    
+    <!-- Endpoints Table -->
+    <div class="glass rounded-xl overflow-hidden relative">
+        <!-- Subtle loading indicator (top bar) - doesn't block UI -->
+        <div v-if="endpointsLoading" class="absolute top-0 left-0 right-0 h-1 bg-purple-600 animate-pulse z-10"></div>
+        <!-- Silent refresh indicator (small dot) -->
+        <div v-if="endpointsSilentRefresh && !endpointsLoading" class="absolute top-2 right-2 z-10">
+            <span class="w-2 h-2 bg-green-500 rounded-full inline-block animate-pulse" title="Refreshing..."></span>
+        </div>
+        <table class="w-full">
+            <thead class="bg-gray-800">
+                <tr>
+                    <th class="px-3 py-3 text-left text-xs text-gray-400 uppercase w-10">
+                        <input type="checkbox" 
+                               :checked="allEndpointsSelected" 
+                               @change="toggleSelectAllEndpoints"
+                               :disabled="bulkTriagingActive"
+                               class="w-4 h-4 rounded bg-gray-700 border-gray-600 text-purple-500 focus:ring-purple-500 cursor-pointer"
+                               title="Select all pending endpoints">
+                    </th>
+                    <th class="px-4 py-3 text-left text-xs text-gray-400 uppercase">Method</th>
+                    <th class="px-4 py-3 text-left text-xs text-gray-400 uppercase">Endpoint</th>
+                    <th class="px-4 py-3 text-left text-xs text-gray-400 uppercase">Params</th>
+                    <th @click="toggleEndpointSort('score')" class="px-4 py-3 text-left text-xs text-gray-400 uppercase cursor-pointer hover:text-white" :class="{'text-purple-400': endpointSortBy === 'score'}">
+                        Score <i v-if="endpointSortBy === 'score'" :class="endpointSortDesc ? 'fa-sort-down' : 'fa-sort-up'" class="fas ml-1"></i>
+                    </th>
+                    <th @click="toggleEndpointSort('seen')" class="px-4 py-3 text-left text-xs text-gray-400 uppercase cursor-pointer hover:text-white" :class="{'text-purple-400': endpointSortBy === 'seen'}">
+                        Seen <i v-if="endpointSortBy === 'seen'" :class="endpointSortDesc ? 'fa-sort-down' : 'fa-sort-up'" class="fas ml-1"></i>
+                    </th>
+                    <th @click="toggleEndpointSort('triaged_at')" class="px-4 py-3 text-left text-xs text-gray-400 uppercase cursor-pointer hover:text-white" :class="{'text-purple-400': endpointSortBy === 'triaged_at'}">
+                        Triaged <i v-if="endpointSortBy === 'triaged_at'" :class="endpointSortDesc ? 'fa-sort-down' : 'fa-sort-up'" class="fas ml-1"></i>
+                    </th>
+                    <th class="px-4 py-3 text-left text-xs text-gray-400 uppercase">Status</th>
+                    <th class="px-4 py-3 text-left text-xs text-gray-400 uppercase">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="ep in filteredEndpoints" :key="ep.hash" 
+                    class="border-t border-gray-800 hover:bg-gray-800/50 cursor-pointer"
+                    :class="isEndpointSelected(ep) ? 'bg-purple-900/20 ring-1 ring-purple-500/30' : ''"
+                    @click="selectedEndpoint = ep">
+                    <td class="px-3 py-3" @click.stop>
+                        <input type="checkbox" 
+                               :checked="isEndpointSelected(ep)"
+                               @change="toggleEndpointSelection(ep)"
+                               :disabled="bulkTriagingActive || ep.status === 'interesting' || ep.status === 'triaged' || ep.status === 'tested'"
+                               class="w-4 h-4 rounded bg-gray-700 border-gray-600 text-purple-500 focus:ring-purple-500 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed">
+                    </td>
+                    <td class="px-4 py-3">
+                        <span :class="methodClass(ep.method)" class="text-xs font-mono px-2 py-0.5 rounded">{{ ep.method }}</span>
+                    </td>
+                    <td class="px-4 py-3 text-sm font-mono max-w-md">
+                        <span class="text-gray-400">{{ ep.host }}</span>
+                        <span class="text-white">{{ ep.path_template }}</span>
+                        <span v-if="ep.has_auth" class="ml-2 text-xs bg-green-500/20 text-green-400 px-1 rounded"><i class="fas fa-lock"></i></span>
+                    </td>
+                    <td class="px-4 py-3 text-xs text-gray-500">{{ (ep.param_names || []).slice(0, 3).join(', ') }}</td>
+                    <td class="px-4 py-3"><span :class="scoreClass(ep.heuristic_score)" class="font-mono">{{ ep.heuristic_score }}</span></td>
+                    <td class="px-4 py-3 text-sm text-gray-400">{{ ep.seen_count }}x</td>
+                    <td class="px-4 py-3 text-xs">
+                        <span v-if="ep.triaged_at" class="text-purple-400" :title="formatTimestamp(ep.triaged_at)">
+                            <i class="fas fa-check-circle mr-1"></i>{{ formatTimeAgo(ep.triaged_at) }}
+                        </span>
+                        <span v-else class="text-gray-600">Never</span>
+                    </td>
+                    <td class="px-4 py-3"><span :class="endpointStatusClass(ep.status)" class="text-xs px-2 py-0.5 rounded">{{ ep.status }}</span></td>
+                    <td class="px-4 py-3" @click.stop>
+                        <button v-if="ep.status !== 'interesting' && ep.status !== 'vulnerable'"
+                                @click="triageEndpoint(ep.hash)" :disabled="triagingEndpoint === ep.hash"
+                                class="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-wait px-2 py-1 rounded text-xs transition">
+                            <i :class="triagingEndpoint === ep.hash ? 'fas fa-spinner fa-spin' : 'fas fa-brain'"></i>
+                            {{ triagingEndpoint === ep.hash ? 'Triaging...' : 'AI Triage' }}
+                        </button>
+                        <span v-else-if="ep.status === 'vulnerable'" class="text-red-400 text-xs"><i class="fas fa-bug"></i> Vulnerable</span>
+                        <span v-else-if="ep.status === 'interesting'" class="text-green-400 text-xs"><i class="fas fa-check-circle"></i> Interesting</span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Pagination -->
+    <div v-if="endpointsPages > 1" class="glass rounded-xl p-4 flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+            <span class="text-gray-400 text-sm">
+                Page {{ endpointsPage }} of {{ endpointsPages }} 
+                ({{ endpointsTotal }} endpoints)
+            </span>
+        </div>
+        <div class="flex items-center space-x-1">
+            <!-- First -->
+            <button @click="goToEndpointsPage(1)" :disabled="endpointsPage === 1 || endpointsLoading"
+                    class="px-3 py-1 rounded bg-gray-800 hover:bg-gray-700 disabled:bg-gray-900 disabled:text-gray-600 text-sm">
+                <i class="fas fa-angle-double-left"></i>
+            </button>
+            <!-- Previous -->
+            <button @click="prevEndpointsPage" :disabled="endpointsPage === 1 || endpointsLoading"
+                    class="px-3 py-1 rounded bg-gray-800 hover:bg-gray-700 disabled:bg-gray-900 disabled:text-gray-600 text-sm">
+                <i class="fas fa-angle-left"></i>
+            </button>
+            <!-- Page numbers -->
+            <template v-for="p in Math.min(5, endpointsPages)" :key="p">
+                <button v-if="getPageNumber(p) > 0 && getPageNumber(p) <= endpointsPages"
+                        @click="goToEndpointsPage(getPageNumber(p))"
+                        :class="endpointsPage === getPageNumber(p) ? 'bg-purple-600' : 'bg-gray-800 hover:bg-gray-700'"
+                        class="px-3 py-1 rounded text-sm min-w-[32px]">
+                    {{ getPageNumber(p) }}
+                </button>
+            </template>
+            <!-- Next -->
+            <button @click="nextEndpointsPage" :disabled="endpointsPage === endpointsPages || endpointsLoading"
+                    class="px-3 py-1 rounded bg-gray-800 hover:bg-gray-700 disabled:bg-gray-900 disabled:text-gray-600 text-sm">
+                <i class="fas fa-angle-right"></i>
+            </button>
+            <!-- Last -->
+            <button @click="goToEndpointsPage(endpointsPages)" :disabled="endpointsPage === endpointsPages || endpointsLoading"
+                    class="px-3 py-1 rounded bg-gray-800 hover:bg-gray-700 disabled:bg-gray-900 disabled:text-gray-600 text-sm">
+                <i class="fas fa-angle-double-right"></i>
+            </button>
+        </div>
+        <div class="flex items-center space-x-2">
+            <span class="text-gray-400 text-sm">Per page:</span>
+            <select v-model="endpointsPerPage" @change="goToEndpointsPage(1)" class="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm">
+                <option :value="25">25</option>
+                <option :value="50">50</option>
+                <option :value="100">100</option>
+                <option :value="200">200</option>
+            </select>
+        </div>
+    </div>
+</div>

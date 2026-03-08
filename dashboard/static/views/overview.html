@@ -1,0 +1,169 @@
+<!-- Overview View Template -->
+<div class="space-y-6 fade-in">
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <div class="glass rounded-xl p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-400 text-xs uppercase">Intercepted</p>
+                    <p class="text-2xl font-bold">{{ stats.total_intercepted || 0 }}</p>
+                </div>
+                <i class="fas fa-satellite-dish text-blue-400 text-xl"></i>
+            </div>
+        </div>
+        <div class="glass rounded-xl p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-400 text-xs uppercase">In Scope</p>
+                    <p class="text-2xl font-bold">{{ stats.total_in_scope || 0 }}</p>
+                </div>
+                <i class="fas fa-crosshairs text-green-400 text-xl"></i>
+            </div>
+        </div>
+        <div class="glass rounded-xl p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-400 text-xs uppercase">Analyzed</p>
+                    <p class="text-2xl font-bold">{{ stats.total_analyzed || 0 }}</p>
+                </div>
+                <i class="fas fa-brain text-purple-400 text-xl"></i>
+            </div>
+        </div>
+        <div class="glass rounded-xl p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-400 text-xs uppercase">Tested</p>
+                    <p class="text-2xl font-bold">{{ stats.total_tested || 0 }}</p>
+                </div>
+                <i class="fas fa-flask text-yellow-400 text-xl"></i>
+            </div>
+        </div>
+        <div class="glass rounded-xl p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-400 text-xs uppercase">Findings</p>
+                    <p class="text-2xl font-bold text-red-400">{{ totalFindings }}</p>
+                </div>
+                <i class="fas fa-bug text-red-400 text-xl"></i>
+            </div>
+        </div>
+        <div class="glass rounded-xl p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-400 text-xs uppercase">Cost</p>
+                    <p class="text-2xl font-bold">${{ (stats.estimated_cost || 0).toFixed(3) }}</p>
+                </div>
+                <i class="fas fa-coins text-yellow-400 text-xl"></i>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Services Quick View -->
+    <div class="glass rounded-xl p-6">
+        <h3 class="text-lg font-semibold mb-4 flex items-center">
+            <i class="fas fa-server mr-2 text-purple-400"></i>
+            Services Status
+        </h3>
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div v-for="(info, name) in health.services" :key="name" 
+                 class="bg-gray-800/50 rounded-lg p-4 hover:bg-gray-800 transition cursor-pointer"
+                 @click="viewServiceLogs(name)">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="font-medium">{{ info.name }}</span>
+                    <span :class="'status-' + info.status" class="text-xs">
+                        <i :class="statusIcon(info.status)"></i>
+                    </span>
+                </div>
+                <p class="text-xs text-gray-500">
+                    <span v-if="info.port">Port {{ info.port }}</span>
+                    <span v-else>Internal</span>
+                </p>
+                <p class="text-xs mt-1" :class="'status-' + info.status">{{ info.status }}</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Severity Stats -->
+    <div class="grid grid-cols-5 gap-4">
+        <div class="sev-critical rounded-xl p-4 text-center">
+            <p class="text-3xl font-bold">{{ stats.findings_by_severity?.critical || 0 }}</p>
+            <p class="text-sm opacity-80">Critical</p>
+        </div>
+        <div class="sev-high rounded-xl p-4 text-center">
+            <p class="text-3xl font-bold">{{ stats.findings_by_severity?.high || 0 }}</p>
+            <p class="text-sm opacity-80">High</p>
+        </div>
+        <div class="sev-medium rounded-xl p-4 text-center">
+            <p class="text-3xl font-bold">{{ stats.findings_by_severity?.medium || 0 }}</p>
+            <p class="text-sm opacity-80">Medium</p>
+        </div>
+        <div class="sev-low rounded-xl p-4 text-center">
+            <p class="text-3xl font-bold">{{ stats.findings_by_severity?.low || 0 }}</p>
+            <p class="text-sm opacity-80">Low</p>
+        </div>
+        <div class="sev-info rounded-xl p-4 text-center">
+            <p class="text-3xl font-bold">{{ stats.findings_by_severity?.info || 0 }}</p>
+            <p class="text-sm opacity-80">Info</p>
+        </div>
+    </div>
+    
+    <!-- Knowledge Base Status -->
+    <div class="glass rounded-xl p-6">
+        <h3 class="text-lg font-semibold mb-4 flex items-center">
+            <i class="fas fa-brain mr-2 text-purple-400"></i>
+            Knowledge Base (RAG)
+            <button @click="refreshKBStatus" class="ml-auto text-xs bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded-lg transition">
+                <i class="fas fa-sync-alt mr-1"></i> Refresh
+            </button>
+        </h3>
+        
+        <div v-if="kbStatus.vector_store_healthy" class="space-y-4">
+            <!-- Total Chunks -->
+            <div class="flex items-center justify-between bg-gray-800/50 rounded-lg p-3">
+                <span class="text-gray-400">Total Chunks</span>
+                <span class="text-xl font-bold text-purple-400">{{ kbStatus.total_chunks?.toLocaleString() || 0 }}</span>
+            </div>
+            
+            <!-- Chunks by Source -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div v-for="(count, source) in kbStatus.chunks_by_source" :key="source" 
+                     class="bg-gray-800/50 rounded-lg p-3 text-center">
+                    <p class="text-lg font-bold" :class="kbSourceColor(source)">{{ count?.toLocaleString() || 0 }}</p>
+                    <p class="text-xs text-gray-400 capitalize">{{ source }}</p>
+                </div>
+            </div>
+            
+            <!-- Last Sync Times -->
+            <div class="space-y-2">
+                <p class="text-xs text-gray-500 uppercase tracking-wider">Last Sync</p>
+                <div v-for="(timestamp, source) in kbStatus.last_sync" :key="source" 
+                     class="flex items-center justify-between text-sm">
+                    <span class="text-gray-400 capitalize">{{ source }}</span>
+                    <span class="text-gray-500">{{ timestamp ? formatDate(timestamp) : 'Never' }}</span>
+                </div>
+            </div>
+            
+            <!-- Sync Buttons -->
+            <div class="flex flex-wrap gap-2 pt-2">
+                <button @click="syncKBSource('cve')" class="text-xs bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-3 py-1.5 rounded-lg transition">
+                    <i class="fas fa-sync mr-1"></i> Sync CVE
+                </button>
+                <button @click="syncKBSource('hacktricks')" class="text-xs bg-green-500/20 hover:bg-green-500/30 text-green-400 px-3 py-1.5 rounded-lg transition">
+                    <i class="fas fa-sync mr-1"></i> Sync HackTricks
+                </button>
+                <button @click="syncKBSource('nuclei')" class="text-xs bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 px-3 py-1.5 rounded-lg transition">
+                    <i class="fas fa-sync mr-1"></i> Sync Nuclei
+                </button>
+                <button @click="syncKBSource('all')" class="text-xs bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 px-3 py-1.5 rounded-lg transition">
+                    <i class="fas fa-sync mr-1"></i> Sync All
+                </button>
+            </div>
+        </div>
+        
+        <div v-else class="text-center py-8">
+            <i class="fas fa-exclamation-triangle text-4xl text-yellow-500 mb-4"></i>
+            <p class="text-gray-400">Knowledge Base not available</p>
+            <p v-if="kbStatus.errors?.length" class="text-xs text-red-400 mt-2">{{ kbStatus.errors[0] }}</p>
+        </div>
+    </div>
+</div>

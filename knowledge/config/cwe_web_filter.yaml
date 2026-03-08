@@ -1,0 +1,125 @@
+# Ghost-Hunter CWE Web Filter
+# ============================
+# Seuls ces CWE sont indexés depuis NVD
+# Focus: Vulnérabilités WEB uniquement
+
+# Liste blanche des CWE web à inclure
+web_cwe:
+  # === INJECTION ===
+  injection:
+    - CWE-79   # Cross-site Scripting (XSS)
+    - CWE-89   # SQL Injection
+    - CWE-94   # Code Injection
+    - CWE-917  # Expression Language Injection
+    - CWE-1336 # Server-Side Template Injection (SSTI)
+    - CWE-90   # LDAP Injection
+    - CWE-643  # XPath Injection
+    - CWE-943  # NoSQL Injection
+    
+  # === RCE / COMMAND INJECTION ===
+  rce_command_injection:
+    - CWE-78   # OS Command Injection
+    - CWE-77   # Command Injection
+    - CWE-95   # Eval Injection
+    - CWE-98   # PHP Remote/Local File Inclusion
+    - CWE-502  # Deserialization of Untrusted Data
+    
+  # === XML / XXE ===
+  xml:
+    - CWE-611  # XML External Entity (XXE)
+    - CWE-91   # XML Injection
+    
+  # === ACCESS CONTROL ===
+  access_control:
+    - CWE-639  # IDOR / BOLA
+    - CWE-284  # Improper Access Control
+    - CWE-862  # Missing Authorization
+    - CWE-863  # Incorrect Authorization
+    - CWE-287  # Improper Authentication
+    - CWE-285  # Improper Authorization
+    - CWE-306  # Missing Authentication for Critical Function
+    
+  # === REQUEST FORGERY ===
+  request_forgery:
+    - CWE-918  # Server-Side Request Forgery (SSRF)
+    - CWE-352  # Cross-Site Request Forgery (CSRF)
+    - CWE-601  # Open Redirect
+    
+  # === FILE HANDLING ===
+  file_handling:
+    - CWE-22   # Path Traversal
+    - CWE-434  # Unrestricted Upload
+    - CWE-73   # External Control of File Name
+    - CWE-40   # Path Traversal: '\\UNC\share\name\' (Windows)
+    
+  # === DATA EXPOSURE ===
+  data_exposure:
+    - CWE-200  # Information Exposure
+    - CWE-209  # Error Message Information Leak
+    - CWE-532  # Log Injection / Information Exposure Through Log Files
+    - CWE-359  # Exposure of Private Personal Information
+    
+  # === SESSION / AUTH ===
+  session_auth:
+    - CWE-384  # Session Fixation
+    - CWE-613  # Insufficient Session Expiration
+    - CWE-614  # Sensitive Cookie Without 'HttpOnly' Flag
+    - CWE-1004 # Sensitive Cookie Without 'Secure' Flag
+    - CWE-521  # Weak Password Requirements
+    - CWE-307  # Improper Restriction of Excessive Authentication Attempts
+    
+  # === CRYPTO ===
+  crypto:
+    - CWE-327  # Use of Broken/Risky Crypto Algorithm
+    - CWE-328  # Reversible One-Way Hash
+    - CWE-330  # Use of Insufficiently Random Values
+    
+  # === API SPECIFIC ===
+  api:
+    - CWE-915  # Mass Assignment
+    - CWE-1236 # CSV Injection
+    - CWE-116  # Improper Encoding/Escaping
+
+# CWE explicitement exclus (NON-WEB)
+excluded_cwe:
+  memory_corruption:
+    - CWE-119  # Buffer Overflow
+    - CWE-120  # Classic Buffer Overflow
+    - CWE-121  # Stack-based Buffer Overflow
+    - CWE-122  # Heap-based Buffer Overflow
+    - CWE-125  # Out-of-bounds Read
+    - CWE-787  # Out-of-bounds Write
+    - CWE-416  # Use After Free
+    - CWE-476  # NULL Pointer Dereference
+    
+  os_specific:
+    - CWE-269  # Privilege Escalation (local)
+    - CWE-264  # Permissions, Privileges (local)
+    
+  hardware:
+    - CWE-1187 # Hardware issues
+    
+# Helper function config
+cwe_lookup:
+  # Format: CWE-ID -> vuln_type (from vuln_taxonomy.yaml)
+  CWE-79: xss
+  CWE-89: sqli
+  CWE-94: rce
+  CWE-78: rce
+  CWE-77: rce
+  CWE-918: ssrf
+  CWE-352: csrf
+  CWE-639: idor
+  CWE-611: xxe
+  CWE-22: path_traversal
+  CWE-434: file_upload
+  CWE-502: deserialization
+  CWE-601: open_redirect
+  CWE-287: authn_bypass
+  CWE-862: authz_bypass
+  CWE-863: authz_bypass
+  CWE-1336: ssti
+  CWE-917: ssti
+  CWE-98: lfi
+  CWE-200: info_disclosure
+  CWE-915: mass_assignment

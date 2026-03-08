@@ -1,0 +1,93 @@
+<!-- Security View Template -->
+<div class="space-y-6 fade-in">
+    <!-- Header with Scan Button -->
+    <div class="flex justify-between items-center">
+        <h2 class="text-xl font-bold"><i class="fas fa-shield-alt mr-2 text-yellow-400"></i>Security Profiles</h2>
+        <button 
+            @click="scanScopeDomains" 
+            :disabled="scanningScope"
+            class="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 disabled:cursor-wait rounded-lg text-sm font-medium transition-all"
+        >
+            <i v-if="scanningScope" class="fas fa-spinner fa-spin mr-2"></i>
+            <i v-else class="fas fa-radar mr-2"></i>
+            {{ scanningScope ? 'Scanning...' : 'Scan Scope Domains' }}
+        </button>
+    </div>
+    
+    <!-- Scan Result Banner -->
+    <div v-if="lastScanResult" class="glass rounded-xl p-4 border border-purple-500/30 bg-purple-900/20">
+        <div class="flex items-center justify-between">
+            <div>
+                <span class="text-purple-400 font-medium">Last Scan: {{ lastScanResult.program }}</span>
+                <span class="text-gray-400 ml-4">{{ lastScanResult.scanned }}/{{ lastScanResult.total_domains }} domains scanned</span>
+            </div>
+            <div class="flex gap-4">
+                <span class="text-yellow-400"><i class="fas fa-shield-virus mr-1"></i>{{ lastScanResult.summary?.waf_count || 0 }} WAF</span>
+                <span class="text-blue-400"><i class="fas fa-cloud mr-1"></i>{{ lastScanResult.summary?.cdn_count || 0 }} CDN</span>
+                <span class="text-red-400"><i class="fas fa-robot mr-1"></i>{{ lastScanResult.summary?.anti_bot_count || 0 }} Anti-Bot</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="grid grid-cols-4 gap-4">
+        <div class="glass rounded-xl p-4 text-center">
+            <p class="text-2xl font-bold text-purple-400">{{ securityProfiles.length }}</p>
+            <p class="text-xs text-gray-500 uppercase">Domains Profiled</p>
+        </div>
+        <div class="glass rounded-xl p-4 text-center">
+            <p class="text-2xl font-bold text-yellow-400">{{ securityProfiles.filter(p => p.waf).length }}</p>
+            <p class="text-xs text-gray-500 uppercase">WAF Detected</p>
+        </div>
+        <div class="glass rounded-xl p-4 text-center">
+            <p class="text-2xl font-bold text-red-400">{{ securityProfiles.filter(p => p.anti_bot).length }}</p>
+            <p class="text-xs text-gray-500 uppercase">Anti-Bot</p>
+        </div>
+        <div class="glass rounded-xl p-4 text-center">
+            <p class="text-2xl font-bold text-blue-400">{{ securityProfiles.filter(p => p.cdn).length }}</p>
+            <p class="text-xs text-gray-500 uppercase">CDN</p>
+        </div>
+    </div>
+    
+    <div class="glass rounded-xl overflow-hidden">
+        <div class="p-4 border-b border-gray-800">
+            <h3 class="font-semibold"><i class="fas fa-shield-alt mr-2 text-yellow-400"></i>Security Profiles</h3>
+        </div>
+        <table v-if="securityProfiles.length" class="w-full text-sm">
+            <thead class="bg-gray-800/50 text-gray-400 uppercase text-xs">
+                <tr>
+                    <th class="p-3 text-left">Domain</th>
+                    <th class="p-3 text-left">WAF</th>
+                    <th class="p-3 text-left">CDN</th>
+                    <th class="p-3 text-left">Anti-Bot</th>
+                    <th class="p-3 text-center">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="profile in securityProfiles" :key="profile.target" class="border-b border-gray-800/50 hover:bg-gray-800/30">
+                    <td class="p-3"><span class="font-medium text-purple-400">{{ profile.target }}</span></td>
+                    <td class="p-3">
+                        <span v-if="profile.waf" class="px-2 py-1 rounded text-xs bg-yellow-500/20 text-yellow-400">{{ profile.waf }}</span>
+                        <span v-else class="text-gray-600">—</span>
+                    </td>
+                    <td class="p-3">
+                        <span v-if="profile.cdn" class="px-2 py-1 rounded text-xs bg-blue-500/20 text-blue-400">{{ profile.cdn }}</span>
+                        <span v-else class="text-gray-600">—</span>
+                    </td>
+                    <td class="p-3">
+                        <span v-if="profile.anti_bot" class="px-2 py-1 rounded text-xs bg-red-500/20 text-red-400">{{ profile.anti_bot }}</span>
+                        <span v-else class="text-gray-600">—</span>
+                    </td>
+                    <td class="p-3 text-center">
+                        <button @click="fetchSecurityProfile(profile.target)" class="px-2 py-1 bg-purple-500/20 hover:bg-purple-500/40 rounded text-purple-400 text-xs">
+                            <i class="fas fa-eye mr-1"></i>Details
+                        </button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <div v-else class="p-8 text-center text-gray-500">
+            <i class="fas fa-shield-virus text-4xl mb-3 opacity-50"></i>
+            <p>No security profiles yet</p>
+        </div>
+    </div>
+</div>

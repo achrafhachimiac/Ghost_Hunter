@@ -1,0 +1,131 @@
+# Ghost-Hunter RAG Sources Configuration
+# =======================================
+# Chaque source peut être activée/désactivée indépendamment
+# Pour ajouter une source: créer un ingestor + ajouter ici
+
+sources:
+  # === SOURCES CORE (P0) ===
+  
+  nvd:
+    enabled: true
+    weight: 1.0
+    sync_interval: daily
+    type: api
+    api_url: "https://services.nvd.nist.gov/rest/json/cves/2.0"
+    rate_limit: 5  # requests per 30 seconds
+    sync_mode: background  # JAMAIS dans le pipeline
+    min_cvss: 5.0
+    max_age_days: 365
+    # Filtrer par CWE web uniquement (voir cwe_web_filter.yaml)
+    use_cwe_filter: true
+    
+  hacktricks:
+    enabled: true
+    weight: 0.9
+    sync_interval: weekly
+    type: git
+    git_url: "https://github.com/carlospolop/hacktricks.git"
+    sparse_checkout: true
+    include_paths:
+      - "pentesting-web/**"
+    exclude_paths:
+      - "**/README.md"
+      - "**/.gitbook/**"
+      - "network-services-pentesting/**"
+      - "linux-hardening/**"
+      - "windows-hardening/**"
+      - "macos-hardening/**"
+      - "mobile-pentesting/**"
+      
+  personal_reports:
+    enabled: true
+    weight: 1.5  # Tes findings = gold
+    sync_interval: auto  # File watcher
+    type: local
+    watch_path: "./knowledge/personal_reports"
+    auto_ingest: true
+    validate_format: true
+    
+  nuclei_templates:
+    enabled: true
+    weight: 0.8
+    sync_interval: weekly
+    type: git
+    git_url: "https://github.com/projectdiscovery/nuclei-templates.git"
+    sparse_checkout: true
+    include_paths:
+      - "http/**"
+    exclude_paths:
+      - "network/**"
+      - "dns/**"
+      - "ssl/**"
+      - "file/**"
+
+  # === SOURCES FUTURES (désactivées par défaut) ===
+  
+  portswigger:
+    enabled: false
+    weight: 1.0
+    sync_interval: weekly
+    type: scraper
+    base_url: "https://portswigger.net/web-security"
+    include_labs: true
+    
+  seclists:
+    enabled: false
+    weight: 0.7
+    sync_interval: monthly
+    type: git
+    git_url: "https://github.com/danielmiessler/SecLists.git"
+    sparse_checkout: true
+    include_paths:
+      - "Fuzzing/"
+      - "Discovery/Web-Content/"
+      - "Payloads/"
+    
+  owasp_cheatsheets:
+    enabled: false
+    weight: 0.9
+    sync_interval: monthly
+    type: git
+    git_url: "https://github.com/OWASP/CheatSheetSeries.git"
+    include_paths:
+      - "cheatsheets/*.md"
+    
+  github_advisory:
+    enabled: false
+    weight: 0.8
+    sync_interval: daily
+    type: api
+    api_url: "https://api.github.com/advisories"
+    ecosystems:
+      - npm
+      - pip
+      - maven
+      - composer
+    
+  bb_writeups:
+    enabled: false
+    weight: 1.2
+    sync_interval: manual
+    type: local
+    watch_path: "./knowledge/sources/writeups/"
+    
+  assetnote:
+    enabled: false
+    weight: 0.6
+    sync_interval: monthly
+    type: git
+    git_url: "https://github.com/assetnote/wordlists.git"
+    sparse_checkout: true
+    include_paths:
+      - "automated/"
+
+# Global settings
+settings:
+  max_total_chunks: 100000
+  reindex_on_startup: false
+  parallel_ingest: true
+  ingest_batch_size: 500
+  chunk_size: 500
+  chunk_overlap: 50

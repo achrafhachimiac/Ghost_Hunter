@@ -1,0 +1,89 @@
+<!-- Config View Template -->
+<div class="space-y-6 fade-in">
+    <div class="glass rounded-xl p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold"><i class="fas fa-crosshairs mr-2 text-green-400"></i>Scope</h3>
+            <button @click="saveScopeConfig" :disabled="savingScope" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-white text-sm disabled:opacity-50">
+                {{ savingScope ? 'Saving...' : 'Save Scope' }}
+            </button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div>
+                <label class="block text-sm text-gray-400 mb-2">Target Name</label>
+                <input v-model="scopeTargetName" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm" placeholder="Example Program">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-400 mb-2">Program URL</label>
+                <input v-model="scopeTargetUrl" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm" placeholder="https://example.com/bug-bounty">
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-6">
+            <div>
+                <h4 class="text-sm text-gray-400 uppercase mb-2">In Scope</h4>
+                <textarea v-model="scopeInText" rows="10" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-4 text-green-400 text-sm font-mono" placeholder="api.example.com&#10;*.example.com&#10;*/api/*"></textarea>
+            </div>
+            <div>
+                <h4 class="text-sm text-gray-400 uppercase mb-2">Out of Scope</h4>
+                <textarea v-model="scopeOutText" rows="10" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-4 text-red-400 text-sm font-mono" placeholder="*.google.com&#10;*.analytics.*"></textarea>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <label class="block text-sm text-gray-400 mb-2">Notes</label>
+            <textarea v-model="scopeNotes" rows="3" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-sm" placeholder="Notes about the current authorized scope"></textarea>
+        </div>
+    </div>
+
+    <div class="glass rounded-xl p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold"><i class="fas fa-key mr-2 text-yellow-400"></i>API Keys</h3>
+            <button @click="saveApiKeysConfig" :disabled="savingApiKeys" class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 rounded-lg text-white text-sm disabled:opacity-50">
+                {{ savingApiKeys ? 'Saving...' : 'Save API Keys' }}
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-sm text-gray-400 mb-2">Groq API Key</label>
+                <input v-model="apiKeys.groq.api_key" type="password" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm" placeholder="gsk_...">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-400 mb-2">OpenRouter API Key</label>
+                <input v-model="apiKeys.openrouter.api_key" type="password" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm" placeholder="sk-or-v1-...">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-400 mb-2">OpenAI API Key</label>
+                <input v-model="apiKeys.openai.api_key" type="password" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm" placeholder="sk-...">
+            </div>
+        </div>
+
+        <p class="text-xs text-gray-500 mt-3">Saved locally in <span class="font-mono">config/api_keys.yaml</span>. This file must stay out of git.</p>
+    </div>
+
+    <div class="glass rounded-xl p-6">
+        <h3 class="text-lg font-semibold mb-4"><i class="fas fa-rocket mr-2 text-cyan-400"></i>One-command launch</h3>
+        <div class="bg-gray-900 rounded-lg p-4 font-mono text-sm text-green-400">./start.sh start</div>
+        <p class="text-sm text-gray-400 mt-3">After launch, use this page to configure scope and API keys, then use the Services view to control processes.</p>
+    </div>
+
+    <div class="glass rounded-xl p-6">
+        <h3 class="text-lg font-semibold mb-4"><i class="fas fa-mobile-alt mr-2 text-purple-400"></i>Android mobile guide</h3>
+        <div class="space-y-3 text-sm text-gray-300">
+            <p><strong>Goal:</strong> route Android app traffic through Ghost-Hunter/Burp and inspect it from the dashboard.</p>
+            <ol class="list-decimal ml-5 space-y-2">
+                <li>Start Ghost-Hunter with <span class="font-mono text-green-400">./start.sh start</span>.</li>
+                <li>Set your Android device proxy to your workstation IP on port <span class="font-mono">8888</span>.</li>
+                <li>Install the Burp/mitm CA certificate on the device if HTTPS interception is needed.</li>
+                <li>If the app uses certificate pinning, use your own approved mobile instrumentation workflow (for example Frida) outside this UI.</li>
+                <li>Browse the mobile app and monitor captured traffic/endpoints in the dashboard.</li>
+            </ol>
+            <p class="text-yellow-400">Note: Android instrumentation is documented here, but not fully automated from the UI.</p>
+        </div>
+    </div>
+
+    <div v-if="configMessage" class="glass rounded-xl p-4 text-sm" :class="configMessage.startsWith('✅') ? 'text-green-400' : 'text-red-400'">
+        {{ configMessage }}
+    </div>
+</div>

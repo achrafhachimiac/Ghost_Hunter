@@ -1,0 +1,25 @@
+# Minimal public MVP requirements
+# Enough for: setup, dashboard, proxy, AI triage/strategy, local config UI
+
+# Core runtime
+mitmproxy>=10.0.0
+redis>=4.5.0
+pyyaml>=6.0
+aiohttp>=3.8.0
+httpx>=0.24.0
+python-dotenv>=1.0.0
+
+# AI providers
+openai>=1.0.0
+groq>=0.4.0
+
+# Dashboard backend
+fastapi>=0.104.0
+uvicorn>=0.24.0
+websockets>=12.0
+python-multipart>=0.0.6
+
+# Utilities
+click>=8.1.0
+rich>=13.0.0
+python-dateutil>=2.8.0

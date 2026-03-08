@@ -1,0 +1,40 @@
+proxy:
+  host: "127.0.0.1"
+  port: 1010
+  ssl_insecure: true
+
+redis:
+  host: "127.0.0.1"
+  port: 6379
+  db: 0
+  password: null
+
+database:
+  type: "sqlite"  # ou "postgresql"
+  path: "data/ghost_hunter.db"
+
+logging:
+  level: "INFO"
+  file: "data/logs/ghost_hunter.log"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+triage:
+  score_threshold: 40  # Score minimum pour IA triage
+  max_queue_size: 1000
+  # Skip Tier 1 quick triage - go directly to Tier 2 with RAG
+  # Tier 1 is minimal AI (~100 tokens) without context
+  # Set to true to always use full RAG-enriched triage
+  skip_tier1: true
+
+rate_limiting:
+  max_requests_per_minute: 30
+  max_errors_before_pause: 5
+  pause_duration_seconds: 60
+
+safe_mode:
+  enabled: true
+  require_confirmation_patterns:
+    - "DELETE /api/*"
+    - "*/admin/*"
+    - "*/payment/*"
+    - "*password*"

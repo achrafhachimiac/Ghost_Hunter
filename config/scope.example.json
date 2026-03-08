@@ -1,0 +1,21 @@
+{
+  "target": {
+    "name": "Example Program",
+    "program_url": "https://example.com/bug-bounty"
+  },
+  "in_scope": [
+    "api.example.com",
+    "*.example.com",
+    "*/api/*"
+  ],
+  "out_of_scope": [
+    "*.google.com",
+    "*.googleapis.com",
+    "*.gstatic.com",
+    "*.facebook.com",
+    "*.twitter.com",
+    "*.segment.io",
+    "*.sentry.io"
+  ],
+  "notes": "Replace with your own authorized target scope before testing."
+}

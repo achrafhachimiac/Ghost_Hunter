@@ -1,0 +1,50 @@
+# Business Logic Vulnerability Patterns
+name: business_logic
+description: Business logic flaw patterns
+
+patterns:
+  - name: race_condition
+    indicators:
+      - "balance"
+      - "quantity"
+      - "amount"
+      - "coupon"
+      - "discount"
+    test_cases:
+      - "Concurrent requests"
+      - "Double spending"
+      - "Race on limited resources"
+      
+  - name: price_manipulation
+    indicators:
+      - "price"
+      - "total"
+      - "amount"
+      - "cost"
+    test_cases:
+      - "Negative price"
+      - "Zero price"
+      - "Decimal manipulation"
+      - "Currency confusion"
+      
+  - name: workflow_bypass
+    indicators:
+      - "step"
+      - "stage"
+      - "status"
+      - "state"
+    test_cases:
+      - "Skip verification step"
+      - "Direct final step access"
+      - "State manipulation"
+      
+  - name: privilege_escalation
+    indicators:
+      - "role"
+      - "admin"
+      - "privilege"
+      - "permission"
+    test_cases:
+      - "Role parameter manipulation"
+      - "Hidden admin endpoints"
+      - "Mass assignment"

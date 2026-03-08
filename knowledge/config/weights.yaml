@@ -1,0 +1,51 @@
+# Ghost-Hunter RAG Weights Configuration
+# =======================================
+# Pondération des différentes sources et boosters
+
+# Poids par source (appliqué aux scores de similarité)
+source_weights:
+  personal_report: 1.5      # Tes findings = gold
+  nvd_cve: 1.0              # Référence officielle
+  hacktricks: 0.9           # Techniques générales
+  nuclei_template: 0.8      # PoC automatisés
+  payloads: 0.7             # Payloads bruts
+  portswigger: 1.0          # Labs de qualité
+  owasp_cheatsheet: 0.9     # Best practices
+  github_advisory: 0.8      # Code patches
+  bb_writeups: 1.2          # Real findings
+  seclists: 0.6             # Wordlists
+  assetnote: 0.6            # Wordlists API
+
+# Boost basé sur la fraîcheur (pour les CVE)
+recency_boost:
+  days_7: 1.5               # CVE < 7 jours (très frais)
+  days_30: 1.3              # CVE < 30 jours
+  days_90: 1.1              # CVE < 90 jours
+  days_365: 1.0             # CVE < 1 an
+  older: 0.8                # CVE > 1 an
+
+# Boost basé sur la sévérité
+severity_boost:
+  critical: 1.4             # CVSS >= 9.0
+  high: 1.2                 # CVSS >= 7.0
+  medium: 1.0               # CVSS >= 4.0
+  low: 0.8                  # CVSS < 4.0
+
+# Boost basé sur le match avec le tech stack détecté
+tech_stack_boost:
+  exact_match: 1.3          # CVE pour exactement ce framework
+  family_match: 1.1         # CVE pour la même famille (ex: React ~ Next.js)
+  no_match: 1.0             # Pas de match tech
+
+# Boost basé sur le type de vulnérabilité
+vuln_type_boost:
+  rce: 1.5                  # Remote Code Execution = critique
+  sqli: 1.3                 # SQL Injection
+  ssrf: 1.3                 # Server-Side Request Forgery
+  idor: 1.2                 # IDOR / BOLA
+  xss: 1.1                  # XSS
+  csrf: 1.0                 # CSRF
+  info_disclosure: 0.9      # Information Disclosure
+  other: 1.0                # Autres
+
+# Score final = similarity_score * source_weight * recency_boost * severity_boost * tech_boost

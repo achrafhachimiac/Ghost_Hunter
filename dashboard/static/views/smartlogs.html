@@ -1,0 +1,37 @@
+<!-- Smart Logs View - Errors Only (Syslog format) -->
+<div class="space-y-4 fade-in">
+    <!-- Header with controls -->
+    <div class="glass rounded-xl p-4 flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+            <span class="text-lg font-semibold text-red-400">
+                <i class="fas fa-exclamation-triangle mr-2"></i>Error Logs
+            </span>
+            <span class="text-sm text-gray-400">{{ errorLogs.length }} errors from all services</span>
+        </div>
+        <div class="flex items-center space-x-4">
+            <button @click="refreshErrorLogs" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm">
+                <i class="fas fa-sync-alt mr-1"></i> Refresh
+            </button>
+            <button @click="copyErrorLogs" class="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg text-sm">
+                <i class="fas fa-copy mr-1"></i> Copy
+            </button>
+            <button @click="clearErrorLogs" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-sm">
+                <i class="fas fa-trash mr-1"></i> Clear
+            </button>
+        </div>
+    </div>
+    
+    <!-- Syslog-style error display -->
+    <div class="glass rounded-xl p-4 h-[600px] overflow-y-auto bg-black font-mono text-sm">
+        <div v-if="errorLogs.length === 0" class="text-center text-gray-500 py-10">
+            <i class="fas fa-check-circle text-4xl text-green-500 mb-4"></i>
+            <p>No errors detected</p>
+        </div>
+        <div v-for="(log, idx) in errorLogs" :key="idx" class="py-1 border-b border-gray-800/50 hover:bg-red-900/20">
+            <span class="text-gray-500">{{ log.timestamp }}</span>
+            <span class="text-yellow-500 ml-2">[{{ log.service }}]</span>
+            <span class="text-red-400 ml-2">{{ log.level }}</span>
+            <span class="text-gray-300 ml-2">{{ log.message }}</span>
+        </div>
+    </div>
+</div>

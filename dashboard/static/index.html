@@ -1,0 +1,2039 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>👻 Ghost Hunter - Command Center</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen">
+    <div id="app" v-cloak class="flex h-screen overflow-hidden">
+        
+        <!-- Sidebar -->
+        <aside class="w-64 bg-gray-900 border-r border-gray-800 flex flex-col">
+            <!-- Logo -->
+            <div class="p-4 border-b border-gray-800">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-ghost text-xl text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-lg">Ghost Hunter</h1>
+                        <p class="text-xs text-gray-500">Command Center</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Target Info -->
+            <div class="p-4 border-b border-gray-800 bg-gray-800/50">
+                <p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Target</p>
+                <p class="font-medium text-purple-400 truncate">{{ health.target || 'No target' }}</p>
+            </div>
+            
+            <!-- Navigation -->
+            <nav class="flex-1 p-2 space-y-1 overflow-y-auto">
+                <div @click="currentView = 'overview'" :class="{'active': currentView === 'overview'}"
+                     class="sidebar-item p-3 rounded-lg cursor-pointer flex items-center space-x-3 transition">
+                    <i class="fas fa-th-large text-gray-400 w-5"></i>
+                    <span>Overview</span>
+                </div>
+                
+                <div @click="currentView = 'services'" :class="{'active': currentView === 'services'}"
+                     class="sidebar-item p-3 rounded-lg cursor-pointer flex items-center space-x-3 transition">
+                    <i class="fas fa-server text-gray-400 w-5"></i>
+                    <span>Services</span>
+                    <span :class="healthBadgeClass" class="ml-auto text-xs px-2 py-0.5 rounded-full">
+                        {{ health.running_services }}/{{ health.total_services }}
+                    </span>
+                </div>
+                
+                <div @click="currentView = 'requests'" :class="{'active': currentView === 'requests'}"
+                     class="sidebar-item p-3 rounded-lg cursor-pointer flex items-center space-x-3 transition">
+                    <i class="fas fa-exchange-alt text-gray-400 w-5"></i>
+                    <span>Requests</span>
+                    <span class="ml-auto text-xs text-gray-500">{{ requests.length }}</span>
+                </div>
+                
+                <div @click="currentView = 'endpoints'" :class="{'active': currentView === 'endpoints'}"
+                     class="sidebar-item p-3 rounded-lg cursor-pointer flex items-center space-x-3 transition">
+                    <i class="fas fa-sitemap text-gray-400 w-5"></i>
+                    <span>Endpoints</span>
+                    <span class="ml-auto text-xs text-purple-400">{{ endpointsSummary.total || 0 }}</span>
+                </div>
+                
+                <div @click="currentView = 'findings'" :class="{'active': currentView === 'findings'}"
+                     class="sidebar-item p-3 rounded-lg cursor-pointer flex items-center space-x-3 transition">
+                    <i class="fas fa-bug text-gray-400 w-5"></i>
+                    <span>Findings</span>
+                    <span v-if="findings.length" class="ml-auto text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full">
+                        {{ findings.length }}
+                    </span>
+                </div>
+                
+                <div @click="currentView = 'security'" :class="{'active': currentView === 'security'}"
+                     class="sidebar-item p-3 rounded-lg cursor-pointer flex items-center space-x-3 transition">
+                    <i class="fas fa-shield-alt text-gray-400 w-5"></i>
+                    <span>Security</span>
+                    <span v-if="securityProfiles.length" class="ml-auto text-xs bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded-full">
+                        {{ securityProfiles.length }}
+                    </span>
+                </div>
+                
+                <div @click="currentView = 'logs'" :class="{'active': currentView === 'logs'}"
+                     class="sidebar-item p-3 rounded-lg cursor-pointer flex items-center space-x-3 transition">
+                    <i class="fas fa-terminal text-gray-400 w-5"></i>
+                    <span>Logs</span>
+                </div>
+                
+                <div @click="currentView = 'smartlogs'" :class="{'active': currentView === 'smartlogs'}"
+                     class="sidebar-item p-3 rounded-lg cursor-pointer flex items-center space-x-3 transition">
+                    <i class="fas fa-filter text-gray-400 w-5"></i>
+                    <span>Smart Logs</span>
+                    <span v-if="smartLogsCount > 0" class="ml-auto text-xs bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded-full">
+                        {{ smartLogsCount }}
+                    </span>
+                </div>
+                
+                <div @click="currentView = 'aitriage'" :class="{'active': currentView === 'aitriage'}"
+                     class="sidebar-item p-3 rounded-lg cursor-pointer flex items-center space-x-3 transition">
+                    <i class="fas fa-brain text-gray-400 w-5"></i>
+                    <span>AI Triage</span>
+                    <span v-if="triageHistory.length" class="ml-auto text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full">
+                        {{ triageHistory.length }}
+                    </span>
+                </div>
+                
+                <div @click="currentView = 'pivotagent'" :class="{'active': currentView === 'pivotagent'}"
+                     class="sidebar-item p-3 rounded-lg cursor-pointer flex items-center space-x-3 transition">
+                    <i class="fas fa-robot text-gray-400 w-5"></i>
+                    <span>Pivot Agent</span>
+                    <span v-if="pivotAgentActive" class="ml-auto w-2 h-2 bg-green-500 rounded-full pulse-dot"></span>
+                    <span v-else-if="pivotFindings && pivotFindings.length" class="ml-auto text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full">
+                        {{ pivotFindings.length }}
+                    </span>
+                </div>
+                
+                <div @click="currentView = 'config'" :class="{'active': currentView === 'config'}"
+                     class="sidebar-item p-3 rounded-lg cursor-pointer flex items-center space-x-3 transition">
+                    <i class="fas fa-cog text-gray-400 w-5"></i>
+                    <span>Config</span>
+                </div>
+
+                <div @click="currentView = 'burpguide'" :class="{'active': currentView === 'burpguide'}"
+                     class="sidebar-item p-3 rounded-lg cursor-pointer flex items-center space-x-3 transition">
+                    <i class="fab fa-buromobelexperte text-gray-400 w-5"></i>
+                    <span>Burp Guide</span>
+                </div>
+            </nav>
+            
+            <!-- Quick Actions -->
+            <div class="p-4 border-t border-gray-800 space-y-2">
+                <button @click="startAllServices" :disabled="allServicesRunning"
+                        class="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:cursor-not-allowed px-4 py-2 rounded-lg font-medium transition flex items-center justify-center space-x-2">
+                    <i class="fas fa-play"></i>
+                    <span>Start All</span>
+                </button>
+                <button @click="stopAllServices" :disabled="!anyServiceRunning"
+                        class="w-full bg-red-600 hover:bg-red-700 disabled:bg-gray-700 disabled:cursor-not-allowed px-4 py-2 rounded-lg font-medium transition flex items-center justify-center space-x-2">
+                    <i class="fas fa-stop"></i>
+                    <span>Stop All</span>
+                </button>
+                <button @click="resetAllData"
+                        class="w-full bg-orange-600 hover:bg-orange-700 px-4 py-2 rounded-lg font-medium transition flex items-center justify-center space-x-2 mt-4">
+                    <i class="fas fa-trash-alt"></i>
+                    <span>Reset All Data</span>
+                </button>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="flex-1 overflow-hidden flex flex-col">
+            <!-- Top Bar -->
+            <header class="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <h2 class="text-xl font-semibold capitalize">{{ currentView }}</h2>
+                    <span class="text-gray-500">|</span>
+                    <span class="text-sm text-gray-400">
+                        <i class="fas fa-clock mr-1"></i>
+                        {{ formatUptime(stats.duration_seconds) }}
+                    </span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-2 text-sm">
+                        <span class="w-2 h-2 bg-green-500 rounded-full pulse-dot"></span>
+                        <span class="text-gray-400">Live</span>
+                    </div>
+                    <button @click="refreshAll" class="p-2 hover:bg-gray-800 rounded-lg transition">
+                        <i class="fas fa-sync-alt text-gray-400"></i>
+                    </button>
+                </div>
+            </header>
+            
+            <!-- Content Area -->
+            <div class="flex-1 overflow-y-auto p-6">
+                
+<!-- ======================== VIEWS START ======================== -->
+                <!-- OVERVIEW VIEW -->
+                <div v-if="currentView === 'overview'" class="view-overview">
+<!-- Overview View Template -->
+<div class="space-y-6 fade-in">
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <div class="glass rounded-xl p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-400 text-xs uppercase">Intercepted</p>
+                    <p class="text-2xl font-bold">{{ stats.total_intercepted || 0 }}</p>
+                </div>
+                <i class="fas fa-satellite-dish text-blue-400 text-xl"></i>
+            </div>
+        </div>
+        <div class="glass rounded-xl p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-400 text-xs uppercase">In Scope</p>
+                    <p class="text-2xl font-bold">{{ stats.total_in_scope || 0 }}</p>
+                </div>
+                <i class="fas fa-crosshairs text-green-400 text-xl"></i>
+            </div>
+        </div>
+        <div class="glass rounded-xl p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-400 text-xs uppercase">Analyzed</p>
+                    <p class="text-2xl font-bold">{{ stats.total_analyzed || 0 }}</p>
+                </div>
+                <i class="fas fa-brain text-purple-400 text-xl"></i>
+            </div>
+        </div>
+        <div class="glass rounded-xl p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-400 text-xs uppercase">Tested</p>
+                    <p class="text-2xl font-bold">{{ stats.total_tested || 0 }}</p>
+                </div>
+                <i class="fas fa-flask text-yellow-400 text-xl"></i>
+            </div>
+        </div>
+        <div class="glass rounded-xl p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-400 text-xs uppercase">Findings</p>
+                    <p class="text-2xl font-bold text-red-400">{{ totalFindings }}</p>
+                </div>
+                <i class="fas fa-bug text-red-400 text-xl"></i>
+            </div>
+        </div>
+        <div class="glass rounded-xl p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-400 text-xs uppercase">Cost</p>
+                    <p class="text-2xl font-bold">${{ (stats.estimated_cost || 0).toFixed(3) }}</p>
+                </div>
+                <i class="fas fa-coins text-yellow-400 text-xl"></i>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Services Quick View -->
+    <div class="glass rounded-xl p-6">
+        <h3 class="text-lg font-semibold mb-4 flex items-center">
+            <i class="fas fa-server mr-2 text-purple-400"></i>
+            Services Status
+        </h3>
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div v-for="(info, name) in health.services" :key="name" 
+                 class="bg-gray-800/50 rounded-lg p-4 hover:bg-gray-800 transition cursor-pointer"
+                 @click="viewServiceLogs(name)">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="font-medium">{{ info.name }}</span>
+                    <span :class="'status-' + info.status" class="text-xs">
+                        <i :class="statusIcon(info.status)"></i>
+                    </span>
+                </div>
+                <p class="text-xs text-gray-500">
+                    <span v-if="info.port">Port {{ info.port }}</span>
+                    <span v-else>Internal</span>
+                </p>
+                <p class="text-xs mt-1" :class="'status-' + info.status">{{ info.status }}</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Severity Stats -->
+    <div class="grid grid-cols-5 gap-4">
+        <div class="sev-critical rounded-xl p-4 text-center">
+            <p class="text-3xl font-bold">{{ stats.findings_by_severity?.critical || 0 }}</p>
+            <p class="text-sm opacity-80">Critical</p>
+        </div>
+        <div class="sev-high rounded-xl p-4 text-center">
+            <p class="text-3xl font-bold">{{ stats.findings_by_severity?.high || 0 }}</p>
+            <p class="text-sm opacity-80">High</p>
+        </div>
+        <div class="sev-medium rounded-xl p-4 text-center">
+            <p class="text-3xl font-bold">{{ stats.findings_by_severity?.medium || 0 }}</p>
+            <p class="text-sm opacity-80">Medium</p>
+        </div>
+        <div class="sev-low rounded-xl p-4 text-center">
+            <p class="text-3xl font-bold">{{ stats.findings_by_severity?.low || 0 }}</p>
+            <p class="text-sm opacity-80">Low</p>
+        </div>
+        <div class="sev-info rounded-xl p-4 text-center">
+            <p class="text-3xl font-bold">{{ stats.findings_by_severity?.info || 0 }}</p>
+            <p class="text-sm opacity-80">Info</p>
+        </div>
+    </div>
+    
+    <!-- Knowledge Base Status -->
+    <div class="glass rounded-xl p-6">
+        <h3 class="text-lg font-semibold mb-4 flex items-center">
+            <i class="fas fa-brain mr-2 text-purple-400"></i>
+            Knowledge Base (RAG)
+            <button @click="refreshKBStatus" class="ml-auto text-xs bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded-lg transition">
+                <i class="fas fa-sync-alt mr-1"></i> Refresh
+            </button>
+        </h3>
+        
+        <div v-if="kbStatus.vector_store_healthy" class="space-y-4">
+            <!-- Total Chunks -->
+            <div class="flex items-center justify-between bg-gray-800/50 rounded-lg p-3">
+                <span class="text-gray-400">Total Chunks</span>
+                <span class="text-xl font-bold text-purple-400">{{ kbStatus.total_chunks?.toLocaleString() || 0 }}</span>
+            </div>
+            
+            <!-- Chunks by Source -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div v-for="(count, source) in kbStatus.chunks_by_source" :key="source" 
+                     class="bg-gray-800/50 rounded-lg p-3 text-center">
+                    <p class="text-lg font-bold" :class="kbSourceColor(source)">{{ count?.toLocaleString() || 0 }}</p>
+                    <p class="text-xs text-gray-400 capitalize">{{ source }}</p>
+                </div>
+            </div>
+            
+            <!-- Last Sync Times -->
+            <div class="space-y-2">
+                <p class="text-xs text-gray-500 uppercase tracking-wider">Last Sync</p>
+                <div v-for="(timestamp, source) in kbStatus.last_sync" :key="source" 
+                     class="flex items-center justify-between text-sm">
+                    <span class="text-gray-400 capitalize">{{ source }}</span>
+                    <span class="text-gray-500">{{ timestamp ? formatDate(timestamp) : 'Never' }}</span>
+                </div>
+            </div>
+            
+            <!-- Sync Buttons -->
+            <div class="flex flex-wrap gap-2 pt-2">
+                <button @click="syncKBSource('cve')" class="text-xs bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-3 py-1.5 rounded-lg transition">
+                    <i class="fas fa-sync mr-1"></i> Sync CVE
+                </button>
+                <button @click="syncKBSource('hacktricks')" class="text-xs bg-green-500/20 hover:bg-green-500/30 text-green-400 px-3 py-1.5 rounded-lg transition">
+                    <i class="fas fa-sync mr-1"></i> Sync HackTricks
+                </button>
+                <button @click="syncKBSource('nuclei')" class="text-xs bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 px-3 py-1.5 rounded-lg transition">
+                    <i class="fas fa-sync mr-1"></i> Sync Nuclei
+                </button>
+                <button @click="syncKBSource('all')" class="text-xs bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 px-3 py-1.5 rounded-lg transition">
+                    <i class="fas fa-sync mr-1"></i> Sync All
+                </button>
+            </div>
+        </div>
+        
+        <div v-else class="text-center py-8">
+            <i class="fas fa-exclamation-triangle text-4xl text-yellow-500 mb-4"></i>
+            <p class="text-gray-400">Knowledge Base not available</p>
+            <p v-if="kbStatus.errors?.length" class="text-xs text-red-400 mt-2">{{ kbStatus.errors[0] }}</p>
+        </div>
+    </div>
+</div>
+
+                </div>
+
+                <!-- SERVICES VIEW -->
+                <div v-else-if="currentView === 'services'" class="view-services">
+<!-- Services View Template -->
+<div class="space-y-6 fade-in">
+    <div v-for="(info, name) in health.services" :key="name" class="glass rounded-xl overflow-hidden">
+        <div class="p-4 flex items-center justify-between border-b border-gray-700">
+            <div class="flex items-center space-x-4">
+                <div :class="statusBgClass(info.status)" class="w-3 h-3 rounded-full"></div>
+                <div>
+                    <h3 class="font-semibold">{{ info.name }}</h3>
+                    <p class="text-xs text-gray-500">
+                        <span v-if="info.pid">PID: {{ info.pid }}</span>
+                        <span v-if="info.port"> • Port: {{ info.port }}</span>
+                    </p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2">
+                <span :class="'status-' + info.status" class="text-sm font-medium capitalize">{{ info.status }}</span>
+                <button @click="restartService(name)" class="p-2 hover:bg-gray-700 rounded-lg transition" title="Restart">
+                    <i class="fas fa-redo text-yellow-400"></i>
+                </button>
+                <button v-if="info.status === 'running'" @click="stopService(name)" class="p-2 hover:bg-gray-700 rounded-lg transition" title="Stop">
+                    <i class="fas fa-stop text-red-400"></i>
+                </button>
+                <button v-else @click="startService(name)" class="p-2 hover:bg-gray-700 rounded-lg transition" title="Start">
+                    <i class="fas fa-play text-green-400"></i>
+                </button>
+            </div>
+        </div>
+        <div class="bg-gray-950 p-4 max-h-48 overflow-y-auto terminal">
+            <div v-for="(log, idx) in serviceLogs[name] || []" :key="idx" :class="'log-' + log.level.toLowerCase()" class="py-0.5">
+                <span class="text-gray-600">[{{ log.timestamp }}]</span>
+                <span class="text-gray-500 mx-1">[{{ log.level }}]</span>
+                {{ log.message }}
+            </div>
+            <div v-if="!serviceLogs[name] || serviceLogs[name].length === 0" class="text-gray-600">No logs yet...</div>
+        </div>
+    </div>
+</div>
+
+                </div>
+
+                <!-- ENDPOINTS VIEW -->
+                <div v-else-if="currentView === 'endpoints'" class="view-endpoints">
+<!-- Endpoints View Template -->
+<div class="space-y-4 fade-in">
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+        <div class="glass rounded-xl p-4 text-center">
+            <p class="text-2xl font-bold text-white">{{ endpointsSummary.total || 0 }}</p>
+            <p class="text-xs text-gray-400">Total</p>
+        </div>
+        <div class="glass rounded-xl p-4 text-center cursor-pointer hover:bg-gray-800" @click="endpointStatusFilter = 'triaged'">
+            <p class="text-2xl font-bold text-blue-400">{{ endpointsSummary.by_status?.triaged || 0 }}</p>
+            <p class="text-xs text-gray-400">Triaged</p>
+        </div>
+        <div class="glass rounded-xl p-4 text-center cursor-pointer hover:bg-gray-800" @click="endpointStatusFilter = 'interesting'">
+            <p class="text-2xl font-bold text-green-400">{{ endpointsSummary.by_status?.interesting || 0 }}</p>
+            <p class="text-xs text-gray-400">Interesting</p>
+        </div>
+        <div class="glass rounded-xl p-4 text-center cursor-pointer hover:bg-gray-800" @click="endpointStatusFilter = 'tested'">
+            <p class="text-2xl font-bold text-purple-400">{{ endpointsSummary.by_status?.tested || 0 }}</p>
+            <p class="text-xs text-gray-400">Tested</p>
+        </div>
+        <div class="glass rounded-xl p-4 text-center cursor-pointer hover:bg-gray-800" @click="endpointStatusFilter = 'deduplicated'">
+            <p class="text-2xl font-bold text-yellow-400">{{ endpointsSummary.by_status?.deduplicated || 0 }}</p>
+            <p class="text-xs text-gray-400">Deduplicated</p>
+        </div>
+        <div class="glass rounded-xl p-4 text-center cursor-pointer hover:bg-gray-800" @click="endpointStatusFilter = 'low_score'">
+            <p class="text-2xl font-bold text-gray-400">{{ endpointsSummary.by_status?.low_score || 0 }}</p>
+            <p class="text-xs text-gray-400">Low Score</p>
+        </div>
+        <div class="glass rounded-xl p-4 text-center cursor-pointer hover:bg-gray-800" @click="endpointStatusFilter = 'out_of_scope'">
+            <p class="text-2xl font-bold text-red-400">{{ endpointsSummary.by_status?.out_of_scope || 0 }}</p>
+            <p class="text-xs text-gray-400">Out of Scope</p>
+        </div>
+    </div>
+    
+    <!-- Filters -->
+    <div class="glass rounded-xl p-4 flex items-center justify-between flex-wrap gap-2">
+        <div class="flex items-center space-x-4 flex-wrap gap-2">
+            <input v-model="endpointFilter" @input="onEndpointFilterChange" type="text" placeholder="Search endpoints..." 
+                   class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:border-purple-500">
+            <input v-model="endpointExcludeFilter" @input="onEndpointExcludeFilterChange" type="text" placeholder="Exclude keywords (comma-sep)..." 
+                   class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:border-red-500 w-56"
+                   title="Exclude endpoints containing these keywords (comma-separated, e.g. 'event-logs,analytics')">
+            <select v-model="endpointStatusFilter" @change="onEndpointStatusFilterChange" class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2">
+                <option value="">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="triaged">Triaged</option>
+                <option value="interesting">Interesting</option>
+                <option value="tested">Tested</option>
+                <option value="low_score">Low Score</option>
+                <option value="out_of_scope">Out of Scope</option>
+            </select>
+            <select v-model="endpointMethodFilter" class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2">
+                <option value="">All Methods</option>
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="PUT">PUT</option>
+                <option value="DELETE">DELETE</option>
+            </select>
+            <label class="flex items-center space-x-2 text-sm text-gray-400 cursor-pointer">
+                <input type="checkbox" v-model="hideOutOfScope" class="rounded bg-gray-800 border-gray-600">
+                <span>Hide Out of Scope</span>
+            </label>
+            <label class="flex items-center space-x-2 text-sm text-gray-400 cursor-pointer">
+                <input type="checkbox" v-model="hideStaticAssets" class="rounded bg-gray-800 border-gray-600">
+                <span>Hide Static</span>
+            </label>
+            <label class="flex items-center space-x-2 text-sm text-purple-400 cursor-pointer font-semibold" title="Show only endpoints that have never been triaged">
+                <input type="checkbox" v-model="neverTriagedOnly" @change="onNeverTriagedChange" class="rounded bg-gray-800 border-purple-600 text-purple-500">
+                <span>Never Triaged</span>
+            </label>
+        </div>
+        <div class="flex items-center space-x-2">
+            <!-- Bulk Selection Info -->
+            <span v-if="selectedEndpointCount > 0" class="text-purple-400 text-sm font-semibold mr-2">
+                {{ selectedEndpointCount }} selected
+            </span>
+            
+            <!-- Bulk Triage Button -->
+            <button v-if="selectedEndpointCount > 0 && !bulkTriagingActive" 
+                    @click="runBulkEndpointTriage"
+                    class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center space-x-2">
+                <i class="fas fa-brain"></i>
+                <span>Triage Selected ({{ selectedEndpointCount }})</span>
+            </button>
+            
+            <!-- Bulk Triage Progress -->
+            <div v-if="bulkTriagingActive" class="flex items-center space-x-3 bg-purple-600/20 px-4 py-2 rounded-lg">
+                <i class="fas fa-spinner fa-spin text-purple-400"></i>
+                <span class="text-purple-400 text-sm">
+                    Triaging {{ bulkTriageProgress.current }}/{{ bulkTriageProgress.total }}
+                </span>
+                <span class="text-gray-500 text-xs truncate max-w-[150px]">
+                    {{ bulkTriageProgress.currentItem }}
+                </span>
+                <button @click="cancelBulkTriage" class="text-red-400 hover:text-red-300 text-xs">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <button @click="refreshEndpoints" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm" :disabled="endpointsLoading">
+                <i :class="endpointsLoading ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'" class="mr-1"></i> Refresh
+            </button>
+            <span class="text-gray-500">{{ endpointsTotal }} total</span>
+        </div>
+    </div>
+    
+    <!-- Endpoints Table -->
+    <div class="glass rounded-xl overflow-hidden relative">
+        <!-- Subtle loading indicator (top bar) - doesn't block UI -->
+        <div v-if="endpointsLoading" class="absolute top-0 left-0 right-0 h-1 bg-purple-600 animate-pulse z-10"></div>
+        <!-- Silent refresh indicator (small dot) -->
+        <div v-if="endpointsSilentRefresh && !endpointsLoading" class="absolute top-2 right-2 z-10">
+            <span class="w-2 h-2 bg-green-500 rounded-full inline-block animate-pulse" title="Refreshing..."></span>
+        </div>
+        <table class="w-full">
+            <thead class="bg-gray-800">
+                <tr>
+                    <th class="px-3 py-3 text-left text-xs text-gray-400 uppercase w-10">
+                        <input type="checkbox" 
+                               :checked="allEndpointsSelected" 
+                               @change="toggleSelectAllEndpoints"
+                               :disabled="bulkTriagingActive"
+                               class="w-4 h-4 rounded bg-gray-700 border-gray-600 text-purple-500 focus:ring-purple-500 cursor-pointer"
+                               title="Select all pending endpoints">
+                    </th>
+                    <th class="px-4 py-3 text-left text-xs text-gray-400 uppercase">Method</th>
+                    <th class="px-4 py-3 text-left text-xs text-gray-400 uppercase">Endpoint</th>
+                    <th class="px-4 py-3 text-left text-xs text-gray-400 uppercase">Params</th>
+                    <th @click="toggleEndpointSort('score')" class="px-4 py-3 text-left text-xs text-gray-400 uppercase cursor-pointer hover:text-white" :class="{'text-purple-400': endpointSortBy === 'score'}">
+                        Score <i v-if="endpointSortBy === 'score'" :class="endpointSortDesc ? 'fa-sort-down' : 'fa-sort-up'" class="fas ml-1"></i>
+                    </th>
+                    <th @click="toggleEndpointSort('seen')" class="px-4 py-3 text-left text-xs text-gray-400 uppercase cursor-pointer hover:text-white" :class="{'text-purple-400': endpointSortBy === 'seen'}">
+                        Seen <i v-if="endpointSortBy === 'seen'" :class="endpointSortDesc ? 'fa-sort-down' : 'fa-sort-up'" class="fas ml-1"></i>
+                    </th>
+                    <th @click="toggleEndpointSort('triaged_at')" class="px-4 py-3 text-left text-xs text-gray-400 uppercase cursor-pointer hover:text-white" :class="{'text-purple-400': endpointSortBy === 'triaged_at'}">
+                        Triaged <i v-if="endpointSortBy === 'triaged_at'" :class="endpointSortDesc ? 'fa-sort-down' : 'fa-sort-up'" class="fas ml-1"></i>
+                    </th>
+                    <th class="px-4 py-3 text-left text-xs text-gray-400 uppercase">Status</th>
+                    <th class="px-4 py-3 text-left text-xs text-gray-400 uppercase">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="ep in filteredEndpoints" :key="ep.hash" 
+                    class="border-t border-gray-800 hover:bg-gray-800/50 cursor-pointer"
+                    :class="isEndpointSelected(ep) ? 'bg-purple-900/20 ring-1 ring-purple-500/30' : ''"
+                    @click="selectedEndpoint = ep">
+                    <td class="px-3 py-3" @click.stop>
+                        <input type="checkbox" 
+                               :checked="isEndpointSelected(ep)"
+                               @change="toggleEndpointSelection(ep)"
+                               :disabled="bulkTriagingActive || ep.status === 'interesting' || ep.status === 'triaged' || ep.status === 'tested'"
+                               class="w-4 h-4 rounded bg-gray-700 border-gray-600 text-purple-500 focus:ring-purple-500 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed">
+                    </td>
+                    <td class="px-4 py-3">
+                        <span :class="methodClass(ep.method)" class="text-xs font-mono px-2 py-0.5 rounded">{{ ep.method }}</span>
+                    </td>
+                    <td class="px-4 py-3 text-sm font-mono max-w-md">
+                        <span class="text-gray-400">{{ ep.host }}</span>
+                        <span class="text-white">{{ ep.path_template }}</span>
+                        <span v-if="ep.has_auth" class="ml-2 text-xs bg-green-500/20 text-green-400 px-1 rounded"><i class="fas fa-lock"></i></span>
+                    </td>
+                    <td class="px-4 py-3 text-xs text-gray-500">{{ (ep.param_names || []).slice(0, 3).join(', ') }}</td>
+                    <td class="px-4 py-3"><span :class="scoreClass(ep.heuristic_score)" class="font-mono">{{ ep.heuristic_score }}</span></td>
+                    <td class="px-4 py-3 text-sm text-gray-400">{{ ep.seen_count }}x</td>
+                    <td class="px-4 py-3 text-xs">
+                        <span v-if="ep.triaged_at" class="text-purple-400" :title="formatTimestamp(ep.triaged_at)">
+                            <i class="fas fa-check-circle mr-1"></i>{{ formatTimeAgo(ep.triaged_at) }}
+                        </span>
+                        <span v-else class="text-gray-600">Never</span>
+                    </td>
+                    <td class="px-4 py-3"><span :class="endpointStatusClass(ep.status)" class="text-xs px-2 py-0.5 rounded">{{ ep.status }}</span></td>
+                    <td class="px-4 py-3" @click.stop>
+                        <button v-if="ep.status !== 'interesting' && ep.status !== 'vulnerable'"
+                                @click="triageEndpoint(ep.hash)" :disabled="triagingEndpoint === ep.hash"
+                                class="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-wait px-2 py-1 rounded text-xs transition">
+                            <i :class="triagingEndpoint === ep.hash ? 'fas fa-spinner fa-spin' : 'fas fa-brain'"></i>
+                            {{ triagingEndpoint === ep.hash ? 'Triaging...' : 'AI Triage' }}
+                        </button>
+                        <span v-else-if="ep.status === 'vulnerable'" class="text-red-400 text-xs"><i class="fas fa-bug"></i> Vulnerable</span>
+                        <span v-else-if="ep.status === 'interesting'" class="text-green-400 text-xs"><i class="fas fa-check-circle"></i> Interesting</span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Pagination -->
+    <div v-if="endpointsPages > 1" class="glass rounded-xl p-4 flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+            <span class="text-gray-400 text-sm">
+                Page {{ endpointsPage }} of {{ endpointsPages }} 
+                ({{ endpointsTotal }} endpoints)
+            </span>
+        </div>
+        <div class="flex items-center space-x-1">
+            <!-- First -->
+            <button @click="goToEndpointsPage(1)" :disabled="endpointsPage === 1 || endpointsLoading"
+                    class="px-3 py-1 rounded bg-gray-800 hover:bg-gray-700 disabled:bg-gray-900 disabled:text-gray-600 text-sm">
+                <i class="fas fa-angle-double-left"></i>
+            </button>
+            <!-- Previous -->
+            <button @click="prevEndpointsPage" :disabled="endpointsPage === 1 || endpointsLoading"
+                    class="px-3 py-1 rounded bg-gray-800 hover:bg-gray-700 disabled:bg-gray-900 disabled:text-gray-600 text-sm">
+                <i class="fas fa-angle-left"></i>
+            </button>
+            <!-- Page numbers -->
+            <template v-for="p in Math.min(5, endpointsPages)" :key="p">
+                <button v-if="getPageNumber(p) > 0 && getPageNumber(p) <= endpointsPages"
+                        @click="goToEndpointsPage(getPageNumber(p))"
+                        :class="endpointsPage === getPageNumber(p) ? 'bg-purple-600' : 'bg-gray-800 hover:bg-gray-700'"
+                        class="px-3 py-1 rounded text-sm min-w-[32px]">
+                    {{ getPageNumber(p) }}
+                </button>
+            </template>
+            <!-- Next -->
+            <button @click="nextEndpointsPage" :disabled="endpointsPage === endpointsPages || endpointsLoading"
+                    class="px-3 py-1 rounded bg-gray-800 hover:bg-gray-700 disabled:bg-gray-900 disabled:text-gray-600 text-sm">
+                <i class="fas fa-angle-right"></i>
+            </button>
+            <!-- Last -->
+            <button @click="goToEndpointsPage(endpointsPages)" :disabled="endpointsPage === endpointsPages || endpointsLoading"
+                    class="px-3 py-1 rounded bg-gray-800 hover:bg-gray-700 disabled:bg-gray-900 disabled:text-gray-600 text-sm">
+                <i class="fas fa-angle-double-right"></i>
+            </button>
+        </div>
+        <div class="flex items-center space-x-2">
+            <span class="text-gray-400 text-sm">Per page:</span>
+            <select v-model="endpointsPerPage" @change="goToEndpointsPage(1)" class="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm">
+                <option :value="25">25</option>
+                <option :value="50">50</option>
+                <option :value="100">100</option>
+                <option :value="200">200</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+                </div>
+
+                <!-- REQUESTS VIEW -->
+                <div v-else-if="currentView === 'requests'" class="view-requests">
+<!-- Requests View Template -->
+<div class="space-y-4 fade-in">
+    <div class="glass rounded-xl p-4 flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+            <input v-model="requestFilter" type="text" placeholder="Filter requests..." 
+                   class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:border-purple-500">
+            <select v-model="requestMethodFilter" class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2">
+                <option value="">All Methods</option>
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="PUT">PUT</option>
+                <option value="DELETE">DELETE</option>
+            </select>
+        </div>
+        <span class="text-gray-500">{{ filteredRequests.length }} requests</span>
+    </div>
+    
+    <div class="glass rounded-xl overflow-hidden">
+        <table class="w-full">
+            <thead class="bg-gray-800">
+                <tr>
+                    <th class="px-4 py-3 text-left text-xs text-gray-400 uppercase">Method</th>
+                    <th class="px-4 py-3 text-left text-xs text-gray-400 uppercase">Host</th>
+                    <th class="px-4 py-3 text-left text-xs text-gray-400 uppercase">Path</th>
+                    <th class="px-4 py-3 text-left text-xs text-gray-400 uppercase">Score</th>
+                    <th class="px-4 py-3 text-left text-xs text-gray-400 uppercase">Vulns</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="req in filteredRequests" :key="req.id" class="border-t border-gray-800 hover:bg-gray-800/50 cursor-pointer" @click="selectedRequest = req">
+                    <td class="px-4 py-3"><span :class="methodClass(req.method)" class="text-xs font-mono px-2 py-0.5 rounded">{{ req.method }}</span></td>
+                    <td class="px-4 py-3 text-sm text-gray-400">{{ req.host }}</td>
+                    <td class="px-4 py-3 text-sm max-w-md truncate">{{ req.path }}</td>
+                    <td class="px-4 py-3"><span :class="scoreClass(req.score)" class="font-mono">{{ req.score }}</span></td>
+                    <td class="px-4 py-3 text-xs">
+                        <span v-for="vuln in (req.potential_vulns || []).slice(0, 2)" :key="vuln" class="bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded mr-1">{{ vuln }}</span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+                </div>
+
+                <!-- FINDINGS VIEW -->
+                <div v-else-if="currentView === 'findings'" class="view-findings">
+<!-- Findings View Template -->
+<div class="space-y-4 fade-in">
+    <div class="glass rounded-xl p-4 flex items-center justify-between">
+        <select v-model="findingSeverityFilter" class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2">
+            <option value="">All Severities</option>
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+        </select>
+        <span class="text-gray-500">{{ filteredFindings.length }} findings</span>
+    </div>
+    
+    <div v-for="finding in filteredFindings" :key="finding.id" class="glass rounded-xl p-6 border-l-4" :style="{borderColor: severityColor(finding.severity)}">
+        <div class="flex items-start justify-between">
+            <div>
+                <div class="flex items-center space-x-3">
+                    <h3 class="text-lg font-semibold">{{ finding.vuln_type }}</h3>
+                    <span :class="'sev-' + finding.severity" class="text-xs px-2 py-0.5 rounded uppercase">{{ finding.severity }}</span>
+                </div>
+                <p class="text-gray-400 mt-1">{{ finding.endpoint }}</p>
+            </div>
+            <div class="text-right text-sm">
+                <p class="text-gray-400">Confidence: {{ finding.confidence }}%</p>
+            </div>
+        </div>
+    </div>
+    
+    <div v-if="findings.length === 0" class="glass rounded-xl p-12 text-center">
+        <i class="fas fa-shield-alt text-5xl text-gray-600 mb-4"></i>
+        <h3 class="text-xl font-semibold text-gray-400">No Findings Yet</h3>
+    </div>
+</div>
+
+                </div>
+
+                <!-- LOGS VIEW -->
+                <div v-else-if="currentView === 'logs'" class="view-logs">
+<!-- Logs View Template -->
+<div class="space-y-4 fade-in">
+    <div class="glass rounded-xl p-4 flex items-center space-x-4">
+        <select v-model="selectedLogService" class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2">
+            <option value="all">All Services</option>
+            <option v-for="(info, name) in health.services" :key="name" :value="name">{{ info.name }}</option>
+        </select>
+        <select v-model="logLevelFilter" class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2">
+            <option value="">All Levels</option>
+            <option value="ERROR">Error</option>
+            <option value="WARNING">Warning</option>
+            <option value="INFO">Info</option>
+        </select>
+        <button @click="clearLogs" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg transition">
+            <i class="fas fa-trash mr-1"></i> Clear
+        </button>
+        <label class="flex items-center space-x-2 text-sm text-gray-400">
+            <input type="checkbox" v-model="autoScrollLogs" class="rounded">
+            <span>Auto-scroll</span>
+        </label>
+    </div>
+    
+    <div ref="logsContainer" class="glass rounded-xl p-4 h-[600px] overflow-y-auto terminal bg-gray-950">
+        <div v-for="(log, idx) in combinedLogs" :key="idx" :class="'log-' + log.level.toLowerCase()" class="py-0.5 hover:bg-gray-900">
+            <span class="text-gray-600">[{{ log.timestamp }}]</span>
+            <span class="text-purple-400 mx-1">[{{ log.service }}]</span>
+            <span class="text-gray-500">[{{ log.level }}]</span>
+            {{ log.message }}
+        </div>
+    </div>
+</div>
+
+                </div>
+
+                <!-- SMARTLOGS VIEW -->
+                <div v-else-if="currentView === 'smartlogs'" class="view-smartlogs">
+<!-- Smart Logs View - Errors Only (Syslog format) -->
+<div class="space-y-4 fade-in">
+    <!-- Header with controls -->
+    <div class="glass rounded-xl p-4 flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+            <span class="text-lg font-semibold text-red-400">
+                <i class="fas fa-exclamation-triangle mr-2"></i>Error Logs
+            </span>
+            <span class="text-sm text-gray-400">{{ errorLogs.length }} errors from all services</span>
+        </div>
+        <div class="flex items-center space-x-4">
+            <button @click="refreshErrorLogs" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm">
+                <i class="fas fa-sync-alt mr-1"></i> Refresh
+            </button>
+            <button @click="copyErrorLogs" class="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg text-sm">
+                <i class="fas fa-copy mr-1"></i> Copy
+            </button>
+            <button @click="clearErrorLogs" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-sm">
+                <i class="fas fa-trash mr-1"></i> Clear
+            </button>
+        </div>
+    </div>
+    
+    <!-- Syslog-style error display -->
+    <div class="glass rounded-xl p-4 h-[600px] overflow-y-auto bg-black font-mono text-sm">
+        <div v-if="errorLogs.length === 0" class="text-center text-gray-500 py-10">
+            <i class="fas fa-check-circle text-4xl text-green-500 mb-4"></i>
+            <p>No errors detected</p>
+        </div>
+        <div v-for="(log, idx) in errorLogs" :key="idx" class="py-1 border-b border-gray-800/50 hover:bg-red-900/20">
+            <span class="text-gray-500">{{ log.timestamp }}</span>
+            <span class="text-yellow-500 ml-2">[{{ log.service }}]</span>
+            <span class="text-red-400 ml-2">{{ log.level }}</span>
+            <span class="text-gray-300 ml-2">{{ log.message }}</span>
+        </div>
+    </div>
+</div>
+
+                </div>
+
+                <!-- SECURITY VIEW -->
+                <div v-else-if="currentView === 'security'" class="view-security">
+<!-- Security View Template -->
+<div class="space-y-6 fade-in">
+    <!-- Header with Scan Button -->
+    <div class="flex justify-between items-center">
+        <h2 class="text-xl font-bold"><i class="fas fa-shield-alt mr-2 text-yellow-400"></i>Security Profiles</h2>
+        <button 
+            @click="scanScopeDomains" 
+            :disabled="scanningScope"
+            class="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 disabled:cursor-wait rounded-lg text-sm font-medium transition-all"
+        >
+            <i v-if="scanningScope" class="fas fa-spinner fa-spin mr-2"></i>
+            <i v-else class="fas fa-radar mr-2"></i>
+            {{ scanningScope ? 'Scanning...' : 'Scan Scope Domains' }}
+        </button>
+    </div>
+    
+    <!-- Scan Result Banner -->
+    <div v-if="lastScanResult" class="glass rounded-xl p-4 border border-purple-500/30 bg-purple-900/20">
+        <div class="flex items-center justify-between">
+            <div>
+                <span class="text-purple-400 font-medium">Last Scan: {{ lastScanResult.program }}</span>
+                <span class="text-gray-400 ml-4">{{ lastScanResult.scanned }}/{{ lastScanResult.total_domains }} domains scanned</span>
+            </div>
+            <div class="flex gap-4">
+                <span class="text-yellow-400"><i class="fas fa-shield-virus mr-1"></i>{{ lastScanResult.summary?.waf_count || 0 }} WAF</span>
+                <span class="text-blue-400"><i class="fas fa-cloud mr-1"></i>{{ lastScanResult.summary?.cdn_count || 0 }} CDN</span>
+                <span class="text-red-400"><i class="fas fa-robot mr-1"></i>{{ lastScanResult.summary?.anti_bot_count || 0 }} Anti-Bot</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="grid grid-cols-4 gap-4">
+        <div class="glass rounded-xl p-4 text-center">
+            <p class="text-2xl font-bold text-purple-400">{{ securityProfiles.length }}</p>
+            <p class="text-xs text-gray-500 uppercase">Domains Profiled</p>
+        </div>
+        <div class="glass rounded-xl p-4 text-center">
+            <p class="text-2xl font-bold text-yellow-400">{{ securityProfiles.filter(p => p.waf).length }}</p>
+            <p class="text-xs text-gray-500 uppercase">WAF Detected</p>
+        </div>
+        <div class="glass rounded-xl p-4 text-center">
+            <p class="text-2xl font-bold text-red-400">{{ securityProfiles.filter(p => p.anti_bot).length }}</p>
+            <p class="text-xs text-gray-500 uppercase">Anti-Bot</p>
+        </div>
+        <div class="glass rounded-xl p-4 text-center">
+            <p class="text-2xl font-bold text-blue-400">{{ securityProfiles.filter(p => p.cdn).length }}</p>
+            <p class="text-xs text-gray-500 uppercase">CDN</p>
+        </div>
+    </div>
+    
+    <div class="glass rounded-xl overflow-hidden">
+        <div class="p-4 border-b border-gray-800">
+            <h3 class="font-semibold"><i class="fas fa-shield-alt mr-2 text-yellow-400"></i>Security Profiles</h3>
+        </div>
+        <table v-if="securityProfiles.length" class="w-full text-sm">
+            <thead class="bg-gray-800/50 text-gray-400 uppercase text-xs">
+                <tr>
+                    <th class="p-3 text-left">Domain</th>
+                    <th class="p-3 text-left">WAF</th>
+                    <th class="p-3 text-left">CDN</th>
+                    <th class="p-3 text-left">Anti-Bot</th>
+                    <th class="p-3 text-center">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="profile in securityProfiles" :key="profile.target" class="border-b border-gray-800/50 hover:bg-gray-800/30">
+                    <td class="p-3"><span class="font-medium text-purple-400">{{ profile.target }}</span></td>
+                    <td class="p-3">
+                        <span v-if="profile.waf" class="px-2 py-1 rounded text-xs bg-yellow-500/20 text-yellow-400">{{ profile.waf }}</span>
+                        <span v-else class="text-gray-600">—</span>
+                    </td>
+                    <td class="p-3">
+                        <span v-if="profile.cdn" class="px-2 py-1 rounded text-xs bg-blue-500/20 text-blue-400">{{ profile.cdn }}</span>
+                        <span v-else class="text-gray-600">—</span>
+                    </td>
+                    <td class="p-3">
+                        <span v-if="profile.anti_bot" class="px-2 py-1 rounded text-xs bg-red-500/20 text-red-400">{{ profile.anti_bot }}</span>
+                        <span v-else class="text-gray-600">—</span>
+                    </td>
+                    <td class="p-3 text-center">
+                        <button @click="fetchSecurityProfile(profile.target)" class="px-2 py-1 bg-purple-500/20 hover:bg-purple-500/40 rounded text-purple-400 text-xs">
+                            <i class="fas fa-eye mr-1"></i>Details
+                        </button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <div v-else class="p-8 text-center text-gray-500">
+            <i class="fas fa-shield-virus text-4xl mb-3 opacity-50"></i>
+            <p>No security profiles yet</p>
+        </div>
+    </div>
+</div>
+
+                </div>
+
+                <!-- CONFIG VIEW -->
+                <div v-else-if="currentView === 'config'" class="view-config">
+<!-- Config View Template -->
+<div class="space-y-6 fade-in">
+    <div class="glass rounded-xl p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold"><i class="fas fa-crosshairs mr-2 text-green-400"></i>Scope</h3>
+            <button @click="saveScopeConfig" :disabled="savingScope" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-white text-sm disabled:opacity-50">
+                {{ savingScope ? 'Saving...' : 'Save Scope' }}
+            </button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div>
+                <label class="block text-sm text-gray-400 mb-2">Target Name</label>
+                <input v-model="scopeTargetName" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm" placeholder="Example Program">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-400 mb-2">Program URL</label>
+                <input v-model="scopeTargetUrl" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm" placeholder="https://example.com/bug-bounty">
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-6">
+            <div>
+                <h4 class="text-sm text-gray-400 uppercase mb-2">In Scope</h4>
+                <textarea v-model="scopeInText" rows="10" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-4 text-green-400 text-sm font-mono" placeholder="api.example.com&#10;*.example.com&#10;*/api/*"></textarea>
+            </div>
+            <div>
+                <h4 class="text-sm text-gray-400 uppercase mb-2">Out of Scope</h4>
+                <textarea v-model="scopeOutText" rows="10" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-4 text-red-400 text-sm font-mono" placeholder="*.google.com&#10;*.analytics.*"></textarea>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <label class="block text-sm text-gray-400 mb-2">Notes</label>
+            <textarea v-model="scopeNotes" rows="3" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-sm" placeholder="Notes about the current authorized scope"></textarea>
+        </div>
+    </div>
+
+    <div class="glass rounded-xl p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold"><i class="fas fa-key mr-2 text-yellow-400"></i>API Keys</h3>
+            <button @click="saveApiKeysConfig" :disabled="savingApiKeys" class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 rounded-lg text-white text-sm disabled:opacity-50">
+                {{ savingApiKeys ? 'Saving...' : 'Save API Keys' }}
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-sm text-gray-400 mb-2">Groq API Key</label>
+                <input v-model="apiKeys.groq.api_key" type="password" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm" placeholder="gsk_...">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-400 mb-2">OpenRouter API Key</label>
+                <input v-model="apiKeys.openrouter.api_key" type="password" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm" placeholder="sk-or-v1-...">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-400 mb-2">OpenAI API Key</label>
+                <input v-model="apiKeys.openai.api_key" type="password" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm" placeholder="sk-...">
+            </div>
+        </div>
+
+        <p class="text-xs text-gray-500 mt-3">Saved locally in <span class="font-mono">config/api_keys.yaml</span>. This file must stay out of git.</p>
+    </div>
+
+    <div class="glass rounded-xl p-6">
+        <h3 class="text-lg font-semibold mb-4"><i class="fas fa-rocket mr-2 text-cyan-400"></i>One-command launch</h3>
+        <div class="bg-gray-900 rounded-lg p-4 font-mono text-sm text-green-400">./start.sh start</div>
+        <p class="text-sm text-gray-400 mt-3">After launch, use this page to configure scope and API keys, then use the Services view to control processes.</p>
+    </div>
+
+    <div class="glass rounded-xl p-6">
+        <h3 class="text-lg font-semibold mb-4"><i class="fas fa-mobile-alt mr-2 text-purple-400"></i>Android mobile guide</h3>
+        <div class="space-y-3 text-sm text-gray-300">
+            <p><strong>Goal:</strong> route Android app traffic through Ghost-Hunter/Burp and inspect it from the dashboard.</p>
+            <ol class="list-decimal ml-5 space-y-2">
+                <li>Start Ghost-Hunter with <span class="font-mono text-green-400">./start.sh start</span>.</li>
+                <li>Set your Android device proxy to your workstation IP on port <span class="font-mono">8888</span>.</li>
+                <li>Install the Burp/mitm CA certificate on the device if HTTPS interception is needed.</li>
+                <li>If the app uses certificate pinning, use your own approved mobile instrumentation workflow (for example Frida) outside this UI.</li>
+                <li>Browse the mobile app and monitor captured traffic/endpoints in the dashboard.</li>
+            </ol>
+            <p class="text-yellow-400">Note: Android instrumentation is documented here, but not fully automated from the UI.</p>
+        </div>
+    </div>
+
+    <div v-if="configMessage" class="glass rounded-xl p-4 text-sm" :class="configMessage.startsWith('✅') ? 'text-green-400' : 'text-red-400'">
+        {{ configMessage }}
+    </div>
+</div>
+
+                </div>
+
+                <!-- BURPGUIDE VIEW -->
+                <div v-else-if="currentView === 'burpguide'" class="view-burpguide">
+<!-- Burp Guide View Template -->
+<div class="space-y-6 fade-in">
+    <div class="glass rounded-xl p-6">
+        <h3 class="text-xl font-semibold mb-3 flex items-center">
+            <i class="fab fa-buromobelexperte mr-3 text-orange-400"></i>
+            Burp plugin setup guide
+        </h3>
+        <p class="text-gray-300 text-sm">
+            This local guide explains how to install Jython, load the Ghost-Hunter Burp plugin, connect it to the dashboard,
+            and start sending Burp-scoped traffic into Ghost-Hunter.
+        </p>
+    </div>
+
+    <div class="glass rounded-xl p-6">
+        <h4 class="text-lg font-semibold mb-4 text-yellow-400">1. Download Jython standalone</h4>
+        <div class="space-y-3 text-sm text-gray-300">
+            <p>Burp needs the standalone Jython JAR to run Python extensions.</p>
+            <div class="bg-gray-900 rounded-lg p-4 font-mono text-sm text-cyan-300 break-all">
+                https://www.jython.org/download
+            </div>
+            <p>Recommended file: <span class="font-mono">jython-standalone-2.7.x.jar</span></p>
+        </div>
+    </div>
+
+    <div class="glass rounded-xl p-6">
+        <h4 class="text-lg font-semibold mb-4 text-green-400">2. Load Jython into Burp</h4>
+        <ol class="list-decimal ml-5 space-y-2 text-sm text-gray-300">
+            <li>Open Burp Suite.</li>
+            <li>Go to <span class="font-mono">Extender → Options</span>.</li>
+            <li>Find the <span class="font-mono">Python Environment</span> section.</li>
+            <li>Select the downloaded <span class="font-mono">jython-standalone-2.7.x.jar</span>.</li>
+        </ol>
+    </div>
+
+    <div class="glass rounded-xl p-6">
+        <h4 class="text-lg font-semibold mb-4 text-purple-400">3. Install the Ghost-Hunter Burp plugin</h4>
+        <ol class="list-decimal ml-5 space-y-2 text-sm text-gray-300">
+            <li>Go to <span class="font-mono">Extender → Extensions</span>.</li>
+            <li>Click <span class="font-mono">Add</span>.</li>
+            <li>Extension type: <span class="font-mono">Python</span>.</li>
+            <li>Select this file:</li>
+        </ol>
+        <div class="bg-gray-900 rounded-lg p-4 font-mono text-sm text-green-300 mt-3 break-all">
+            burp_extension/ghost_hunter.py
+        </div>
+    </div>
+
+    <div class="glass rounded-xl p-6">
+        <h4 class="text-lg font-semibold mb-4 text-blue-400">4. Connect Burp to the local dashboard</h4>
+        <ol class="list-decimal ml-5 space-y-2 text-sm text-gray-300">
+            <li>Start Ghost-Hunter with <span class="font-mono">./hunt.sh start</span>.</li>
+            <li>Open the Burp tab named <span class="font-mono">Ghost-Hunter</span>.</li>
+            <li>Set the API URL to:</li>
+        </ol>
+        <div class="bg-gray-900 rounded-lg p-4 font-mono text-sm text-cyan-300 mt-3 break-all">
+            http://127.0.0.1:1010
+        </div>
+        <p class="text-sm text-gray-300 mt-3">Then click <span class="font-mono">Save &amp; Test Connection</span>.</p>
+    </div>
+
+    <div class="glass rounded-xl p-6">
+        <h4 class="text-lg font-semibold mb-4 text-red-400">5. Important: define Burp scope first</h4>
+        <ol class="list-decimal ml-5 space-y-2 text-sm text-gray-300">
+            <li>Open <span class="font-mono">Target → Scope</span> in Burp.</li>
+            <li>Add only the domains and paths you are authorized to test.</li>
+            <li>Browse the target normally.</li>
+            <li>The plugin will forward Burp-scoped traffic to Ghost-Hunter.</li>
+        </ol>
+    </div>
+
+    <div class="glass rounded-xl p-6">
+        <h4 class="text-lg font-semibold mb-4 text-cyan-400">Quick checklist</h4>
+        <div class="space-y-2 text-sm text-gray-300">
+            <p>✅ Ghost-Hunter running: <span class="font-mono">./hunt.sh start</span></p>
+            <p>✅ Burp plugin loaded: <span class="font-mono">burp_extension/ghost_hunter.py</span></p>
+            <p>✅ Jython configured in Burp</p>
+            <p>✅ Burp scope configured</p>
+            <p>✅ API URL set to <span class="font-mono">http://127.0.0.1:1010</span></p>
+        </div>
+    </div>
+</div>
+                </div>
+
+                <!-- AITRIAGE VIEW -->
+                <div v-else-if="currentView === 'aitriage'" class="view-aitriage">
+<!-- AI Triage View Template -->
+<div class="space-y-4 fade-in">
+    <!-- Stats -->
+    <div class="grid grid-cols-4 gap-4">
+        <div class="glass rounded-xl p-4 text-center">
+            <p class="text-2xl font-bold text-white">{{ triageHistory.length }}</p>
+            <p class="text-xs text-gray-400">Total Triaged</p>
+        </div>
+        <div class="glass rounded-xl p-4 text-center">
+            <p class="text-2xl font-bold text-green-400">{{ triageHistory.filter(t => t.interesting).length }}</p>
+            <p class="text-xs text-gray-400">Interesting</p>
+        </div>
+        <div class="glass rounded-xl p-4 text-center">
+            <p class="text-2xl font-bold text-gray-400">{{ triageHistory.filter(t => !t.interesting).length }}</p>
+            <p class="text-xs text-gray-400">Not Interesting</p>
+        </div>
+        <div class="glass rounded-xl p-4 text-center">
+            <p class="text-2xl font-bold text-purple-400">{{ triageHistory.reduce((sum, t) => sum + (t.tokens || 0), 0) }}</p>
+            <p class="text-xs text-gray-400">Tokens Used</p>
+        </div>
+    </div>
+    
+    <!-- Controls -->
+    <div class="glass rounded-xl p-4 flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+            <select v-model="triageFilter" class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2">
+                <option value="all">All Results</option>
+                <option value="interesting">Interesting Only</option>
+                <option value="not_interesting">Not Interesting</option>
+            </select>
+            <span class="text-gray-400 text-sm">{{ filteredTriageHistory.length }} results</span>
+            
+            <!-- Bulk Selection Controls -->
+            <div class="border-l border-gray-700 pl-4 flex items-center space-x-3">
+                <label class="flex items-center space-x-2 cursor-pointer text-sm">
+                    <input type="checkbox" 
+                           :checked="allInterestingSelected" 
+                           @change="toggleSelectAllTriage"
+                           class="w-4 h-4 rounded bg-gray-700 border-gray-600 text-purple-500 focus:ring-purple-500">
+                    <span class="text-gray-400">Select All Interesting</span>
+                </label>
+                <span v-if="selectedTriageCount > 0" class="text-purple-400 text-sm font-semibold">
+                    {{ selectedTriageCount }} selected
+                </span>
+            </div>
+        </div>
+        
+        <div class="flex items-center space-x-2">
+            <!-- Bulk Test Button -->
+            <button v-if="selectedTriageCount > 0 && !bulkTestingActive" 
+                    @click="runBulkTriageTest"
+                    class="bg-orange-600 hover:bg-orange-700 px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center space-x-2">
+                <i class="fas fa-bolt"></i>
+                <span>Test Selected ({{ selectedTriageCount }})</span>
+            </button>
+            
+            <!-- Bulk Test Progress -->
+            <div v-if="bulkTestingActive" class="flex items-center space-x-3 bg-orange-600/20 px-4 py-2 rounded-lg">
+                <i class="fas fa-spinner fa-spin text-orange-400"></i>
+                <span class="text-orange-400 text-sm">
+                    Testing {{ bulkTestProgress.current }}/{{ bulkTestProgress.total }}
+                </span>
+                <span class="text-gray-500 text-xs truncate max-w-[200px]">
+                    {{ bulkTestProgress.currentItem }}
+                </span>
+                <button @click="cancelBulkTest" class="text-red-400 hover:text-red-300 text-xs">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+            </div>
+            
+            <button @click="clearTriageHistory" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-sm">
+                <i class="fas fa-trash mr-1"></i> Clear History
+            </button>
+        </div>
+    </div>
+    
+    <!-- Triage Results List -->
+    <div class="space-y-4">
+        <div v-for="(triage, idx) in filteredTriageHistory" :key="idx" 
+             class="glass rounded-xl p-5 border-l-4 transition hover:bg-gray-800/50"
+             :class="[
+                 triage.tested && triage.testResult?.findings?.length ? 'border-red-500' : triage.interesting ? 'border-green-500' : 'border-gray-600',
+                 isTriageSelected(triage) ? 'ring-2 ring-purple-500/50' : ''
+             ]">
+            <!-- Header -->
+            <div class="flex items-start justify-between mb-3">
+                <div class="flex items-center space-x-3">
+                    <!-- Checkbox for bulk selection -->
+                    <input type="checkbox" 
+                           :checked="isTriageSelected(triage)"
+                           @change="toggleTriageSelection(triage)"
+                           :disabled="bulkTestingActive"
+                           class="w-4 h-4 rounded bg-gray-700 border-gray-600 text-purple-500 focus:ring-purple-500 cursor-pointer">
+                    
+                    <span :class="methodClass(triage.method)" class="text-xs font-mono px-2 py-0.5 rounded">{{ triage.method }}</span>
+                    <span v-if="triage.tested && triage.testResult?.findings?.length" class="bg-red-500/20 text-red-400 px-2 py-0.5 rounded text-xs font-semibold">
+                        <i class="fas fa-bug mr-1"></i>VULNERABLE
+                    </span>
+                    <span v-else-if="triage.tested" class="bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded text-xs">
+                        <i class="fas fa-shield-alt mr-1"></i>Tested
+                    </span>
+                    <span v-else-if="triage.interesting" class="bg-green-500/20 text-green-400 px-2 py-0.5 rounded text-xs font-semibold">
+                        <i class="fas fa-check-circle mr-1"></i>INTERESTING
+                    </span>
+                    <span v-else class="bg-gray-500/20 text-gray-400 px-2 py-0.5 rounded text-xs">
+                        <i class="fas fa-minus-circle mr-1"></i>Not Interesting
+                    </span>
+                    <span class="text-xs text-gray-500">{{ triage.timestamp }}</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="text-sm" :class="triage.confidence >= 70 ? 'text-green-400' : triage.confidence >= 40 ? 'text-yellow-400' : 'text-gray-400'">
+                        {{ triage.confidence }}% confidence
+                    </span>
+                    <!-- STEALTH MODE TOGGLE -->
+                    <label class="flex items-center space-x-1 text-xs cursor-pointer ml-2" :title="'Enable Puppeteer stealth mode to bypass Friendly Captcha and anti-bot protections'">
+                        <input type="checkbox" v-model="triage.useStealth" class="w-3 h-3 rounded">
+                        <span class="text-purple-400"><i class="fas fa-user-ninja"></i> Stealth</span>
+                    </label>
+                    <!-- TEST BUTTON (initial test) -->
+                    <button v-if="triage.interesting && !triage.tested" 
+                            @click="testTriageItem(triage, idx)"
+                            :disabled="triage.testing"
+                            class="ml-3 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 px-3 py-1 rounded text-sm font-semibold">
+                        <i v-if="triage.testing" class="fas fa-spinner fa-spin mr-1"></i>
+                        <i v-else class="fas fa-bolt mr-1"></i>
+                        {{ triage.testing ? 'Testing...' : 'Test' }}
+                    </button>
+                    <!-- RE-TEST BUTTON (already tested) -->
+                    <button v-if="triage.tested" 
+                            @click="testTriageItem(triage, idx)"
+                            :disabled="triage.testing"
+                            class="ml-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 px-3 py-1 rounded text-sm font-semibold">
+                        <i v-if="triage.testing" class="fas fa-spinner fa-spin mr-1"></i>
+                        <i v-else class="fas fa-redo mr-1"></i>
+                        {{ triage.testing ? 'Testing...' : 'Re-test' }}
+                    </button>
+                    <!-- MULTI-ROUND ATTACK BUTTON -->
+                    <button v-if="triage.interesting" 
+                            @click="startMultiRoundAttack(triage, idx)"
+                            :disabled="triage.multiRoundRunning"
+                            class="ml-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 px-3 py-1 rounded text-sm font-semibold"
+                            title="Launch adaptive multi-round attack with WAF bypass learning">
+                        <i v-if="triage.multiRoundRunning" class="fas fa-spinner fa-spin mr-1"></i>
+                        <i v-else class="fas fa-layer-group mr-1"></i>
+                        {{ triage.multiRoundRunning ? 'Running...' : 'Multi-Round' }}
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Endpoint with Debug Tooltip -->
+            <div class="mb-3 relative group/debug">
+                <p class="font-mono text-sm bg-gray-800 p-2 rounded cursor-help flex items-center justify-between">
+                    <span>
+                        <span class="text-gray-400">{{ triage.host }}</span>
+                        <span class="text-white">{{ triage.path }}</span>
+                    </span>
+                    <span v-if="triage.debug_prompt" class="text-xs text-purple-400 opacity-60 group-hover/debug:opacity-100">
+                        <i class="fas fa-bug mr-1"></i>Hover for AI Debug
+                    </span>
+                </p>
+                
+                <!-- Debug Tooltip (shown on hover) -->
+                <div v-if="triage.debug_prompt" 
+                     class="absolute left-0 top-full mt-2 z-50 hidden group-hover/debug:block w-full max-w-4xl">
+                    <div class="bg-gray-900 border border-purple-500/50 rounded-xl shadow-2xl overflow-hidden">
+                        <!-- Header -->
+                        <div class="bg-purple-900/50 px-4 py-2 border-b border-purple-500/30 flex items-center justify-between">
+                            <span class="text-purple-300 font-semibold text-sm">
+                                <i class="fas fa-robot mr-2"></i>AI Debug Info
+                            </span>
+                            <span class="text-xs text-gray-400">
+                                {{ triage.model }} • {{ triage.tokens }} tokens
+                            </span>
+                        </div>
+                        
+                        <!-- Content -->
+                        <div class="p-4 max-h-[60vh] overflow-y-auto space-y-4">
+                            <!-- Prompt Section -->
+                            <div>
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-xs text-yellow-400 uppercase font-semibold">
+                                        <i class="fas fa-paper-plane mr-1"></i> Prompt Sent
+                                    </span>
+                                    <button @click.stop="copyToClipboard(triage.debug_prompt)" 
+                                            class="text-xs text-gray-400 hover:text-white">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                </div>
+                                <pre class="bg-gray-800 p-3 rounded text-xs text-gray-300 overflow-x-auto whitespace-pre-wrap max-h-[30vh] overflow-y-auto font-mono">{{ triage.debug_prompt }}</pre>
+                            </div>
+                            
+                            <!-- Response Section -->
+                            <div>
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-xs text-green-400 uppercase font-semibold">
+                                        <i class="fas fa-reply mr-1"></i> AI Response
+                                    </span>
+                                    <button @click.stop="copyToClipboard(triage.debug_response)" 
+                                            class="text-xs text-gray-400 hover:text-white">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                </div>
+                                <pre class="bg-gray-800 p-3 rounded text-xs text-gray-300 overflow-x-auto whitespace-pre-wrap max-h-[20vh] overflow-y-auto font-mono">{{ triage.debug_response }}</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ═══════════════════════════════════════════════════════════════ -->
+            <!-- ORIGINAL REQUEST/RESPONSE (captured via Burp/proxy) -->
+            <!-- ═══════════════════════════════════════════════════════════════ -->
+            <div v-if="triage.original_request" class="mb-3 bg-indigo-900/30 rounded-lg p-4 border border-indigo-700/50">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs text-indigo-400 uppercase font-semibold">
+                        <i class="fas fa-camera mr-1"></i> Captured Request/Response (Original)
+                    </span>
+                    <button @click="triage.showOriginal = !triage.showOriginal" 
+                            class="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
+                        <i :class="triage.showOriginal ? 'fa-chevron-down' : 'fa-chevron-right'" class="fas"></i>
+                        {{ triage.showOriginal ? 'Hide' : 'Show' }} Details
+                    </button>
+                </div>
+                
+                <!-- Quick Summary (always visible) -->
+                <div class="flex items-center gap-4 text-xs text-gray-400">
+                    <span v-if="triage.original_response?.status_code" 
+                          :class="triage.original_response.status_code < 400 ? 'text-green-400' : 'text-red-400'">
+                        <i class="fas fa-reply mr-1"></i>HTTP {{ triage.original_response.status_code }}
+                    </span>
+                    <span v-if="triage.original_response?.time_ms" class="text-gray-500">
+                        <i class="fas fa-clock mr-1"></i>{{ triage.original_response.time_ms }}ms
+                    </span>
+                    <span v-if="triage.original_request?.headers" class="text-gray-500">
+                        <i class="fas fa-list mr-1"></i>{{ Object.keys(triage.original_request.headers).length }} headers
+                    </span>
+                    <span v-if="triage.original_request?.body" class="text-gray-500">
+                        <i class="fas fa-file-alt mr-1"></i>{{ triage.original_request.body.length }} bytes body
+                    </span>
+                </div>
+                
+                <!-- Expanded Details -->
+                <div v-if="triage.showOriginal" class="mt-3 space-y-3">
+                    <!-- ORIGINAL REQUEST -->
+                    <div class="bg-gray-900/80 border border-gray-700 rounded p-3 text-xs">
+                        <div class="flex items-center justify-between mb-2 pb-2 border-b border-gray-700">
+                            <span class="font-semibold text-yellow-400">
+                                <i class="fas fa-arrow-up mr-1"></i> Original Request
+                            </span>
+                        </div>
+                        
+                        <!-- Request URL -->
+                        <div class="mb-2">
+                            <span class="text-gray-500">{{ triage.original_request.method }}</span>
+                            <code class="ml-1 text-blue-300 break-all">{{ triage.original_request.url }}</code>
+                        </div>
+                        
+                        <!-- Request Headers -->
+                        <details v-if="triage.original_request.headers && Object.keys(triage.original_request.headers).length" class="mb-2">
+                            <summary class="text-gray-500 cursor-pointer hover:text-gray-400">
+                                Request Headers ({{ Object.keys(triage.original_request.headers).length }})
+                            </summary>
+                            <pre class="mt-1 bg-black/50 p-2 rounded overflow-x-auto text-green-300 max-h-40">{{ formatHeaders(triage.original_request.headers) }}</pre>
+                        </details>
+                        
+                        <!-- Request Cookies -->
+                        <details v-if="triage.original_request.cookies && Object.keys(triage.original_request.cookies).length" class="mb-2">
+                            <summary class="text-gray-500 cursor-pointer hover:text-gray-400">
+                                Cookies ({{ Object.keys(triage.original_request.cookies).length }})
+                            </summary>
+                            <pre class="mt-1 bg-black/50 p-2 rounded overflow-x-auto text-orange-300 max-h-40">{{ formatHeaders(triage.original_request.cookies) }}</pre>
+                        </details>
+                        
+                        <!-- Request Body -->
+                        <details v-if="triage.original_request.body" class="mb-2">
+                            <summary class="text-gray-500 cursor-pointer hover:text-gray-400">
+                                Request Body ({{ triage.original_request.body.length }} bytes)
+                            </summary>
+                            <pre class="mt-1 bg-black/50 p-2 rounded overflow-x-auto text-yellow-300 max-h-40">{{ formatBody(triage.original_request.body, triage.original_request.body_json) }}</pre>
+                        </details>
+                        
+                        <!-- Query Params -->
+                        <details v-if="triage.original_request.query_params && Object.keys(triage.original_request.query_params).length" class="mb-2">
+                            <summary class="text-gray-500 cursor-pointer hover:text-gray-400">
+                                Query Parameters ({{ Object.keys(triage.original_request.query_params).length }})
+                            </summary>
+                            <pre class="mt-1 bg-black/50 p-2 rounded overflow-x-auto text-purple-300 max-h-40">{{ formatHeaders(triage.original_request.query_params) }}</pre>
+                        </details>
+                    </div>
+                    
+                    <!-- ORIGINAL RESPONSE -->
+                    <div v-if="triage.original_response" class="bg-gray-900/80 border border-gray-700 rounded p-3 text-xs">
+                        <div class="flex items-center justify-between mb-2 pb-2 border-b border-gray-700">
+                            <span class="font-semibold text-cyan-400">
+                                <i class="fas fa-arrow-down mr-1"></i> Original Response
+                            </span>
+                            <div class="flex items-center gap-2">
+                                <span v-if="triage.original_response.time_ms" class="text-gray-500">
+                                    {{ triage.original_response.time_ms }}ms
+                                </span>
+                                <span v-if="triage.original_response.status_code" 
+                                      :class="triage.original_response.status_code < 400 ? 'text-green-400' : 'text-red-400'">
+                                    HTTP {{ triage.original_response.status_code }}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <!-- Response Headers -->
+                        <details v-if="triage.original_response.headers && Object.keys(triage.original_response.headers).length" class="mb-2">
+                            <summary class="text-gray-500 cursor-pointer hover:text-gray-400">
+                                Response Headers ({{ Object.keys(triage.original_response.headers).length }})
+                            </summary>
+                            <pre class="mt-1 bg-black/50 p-2 rounded overflow-x-auto text-green-300 max-h-40">{{ formatHeaders(triage.original_response.headers) }}</pre>
+                        </details>
+                        
+                        <!-- Response Body -->
+                        <details v-if="triage.original_response.body" class="mb-2" open>
+                            <summary class="text-gray-500 cursor-pointer hover:text-gray-400">
+                                Response Body ({{ triage.original_response.body.length }} bytes)
+                            </summary>
+                            <pre class="mt-1 bg-black/50 p-2 rounded overflow-x-auto text-gray-300 max-h-60">{{ formatBody(triage.original_response.body) }}</pre>
+                        </details>
+                    </div>
+                    
+                    <!-- No response captured -->
+                    <div v-else class="text-center text-gray-500 py-2 text-xs">
+                        <i class="fas fa-exclamation-circle mr-1"></i>
+                        No response captured for this request
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Test Results (if tested) -->
+            <div v-if="triage.tested && triage.testResult" class="mb-3 bg-gray-800/70 rounded-lg p-4 border border-gray-700">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs text-gray-400 uppercase">Test Results</span>
+                    <div class="flex items-center space-x-3">
+                        <!-- View Strategy Popup Button -->
+                        <button v-if="triage.testResult.strategy_prompt" 
+                                @click="triage.showStrategyPopup = true"
+                                class="text-xs bg-purple-600/30 text-purple-300 hover:bg-purple-600/50 px-2 py-1 rounded flex items-center gap-1 border border-purple-500/30">
+                            <i class="fas fa-robot"></i> View Strategy
+                        </button>
+                        <span class="text-xs text-gray-500">
+                            {{ triage.testResult.payloads_tested }} payloads • {{ triage.testResult.vuln_class }}
+                        </span>
+                    </div>
+                </div>
+                
+                <!-- ═══════════════════════════════════════════════════════════════ -->
+                <!-- STRATEGIST DEBUG POPUP MODAL -->
+                <!-- ═══════════════════════════════════════════════════════════════ -->
+                <div v-if="triage.showStrategyPopup" 
+                     class="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+                     @click.self="triage.showStrategyPopup = false">
+                    <div class="bg-gray-900 border border-purple-500/50 rounded-xl shadow-2xl max-w-5xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+                        <!-- Modal Header -->
+                        <div class="bg-purple-900/50 px-6 py-4 border-b border-purple-500/30 flex items-center justify-between shrink-0">
+                            <div class="flex items-center gap-3">
+                                <i class="fas fa-brain text-purple-400 text-xl"></i>
+                                <div>
+                                    <h3 class="text-lg font-bold text-white">AI Strategist Debug</h3>
+                                    <p class="text-xs text-gray-400">
+                                        {{ triage.testResult.strategy_model || 'Unknown Model' }} • 
+                                        {{ triage.testResult.strategy_tokens || 0 }} tokens
+                                    </p>
+                                </div>
+                            </div>
+                            <button @click="triage.showStrategyPopup = false" 
+                                    class="text-gray-400 hover:text-white text-xl p-2 hover:bg-gray-700 rounded">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- Modal Content (scrollable) -->
+                        <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                            <!-- Prompt Sent Section -->
+                            <div>
+                                <div class="flex items-center justify-between mb-3">
+                                    <span class="text-sm text-yellow-400 uppercase font-bold flex items-center gap-2">
+                                        <i class="fas fa-paper-plane"></i> Prompt Sent to LLM
+                                    </span>
+                                    <button @click="copyToClipboard(triage.testResult.strategy_prompt)" 
+                                            class="text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 px-3 py-1 rounded flex items-center gap-1">
+                                        <i class="fas fa-copy"></i> Copy Prompt
+                                    </button>
+                                </div>
+                                <pre class="bg-gray-800 border border-gray-700 p-4 rounded-lg text-xs text-gray-300 overflow-x-auto whitespace-pre-wrap max-h-[35vh] overflow-y-auto font-mono">{{ triage.testResult.strategy_prompt }}</pre>
+                            </div>
+                            
+                            <!-- AI Response Section -->
+                            <div>
+                                <div class="flex items-center justify-between mb-3">
+                                    <span class="text-sm text-green-400 uppercase font-bold flex items-center gap-2">
+                                        <i class="fas fa-reply"></i> LLM Response (Strategy)
+                                    </span>
+                                    <button @click="copyToClipboard(triage.testResult.strategy_response)" 
+                                            class="text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 px-3 py-1 rounded flex items-center gap-1">
+                                        <i class="fas fa-copy"></i> Copy Response
+                                    </button>
+                                </div>
+                                <pre class="bg-gray-800 border border-gray-700 p-4 rounded-lg text-xs text-gray-300 overflow-x-auto whitespace-pre-wrap max-h-[35vh] overflow-y-auto font-mono">{{ triage.testResult.strategy_response }}</pre>
+                            </div>
+                        </div>
+                        
+                        <!-- Modal Footer -->
+                        <div class="bg-gray-800 px-6 py-3 border-t border-gray-700 shrink-0 flex justify-end">
+                            <button @click="triage.showStrategyPopup = false"
+                                    class="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded font-medium">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <!-- ═══════════════════════════════════════════════════════════════ -->
+                
+                <!-- Findings -->
+                <div v-if="triage.testResult.findings && triage.testResult.findings.length" class="space-y-2">
+                    <div v-for="finding in triage.testResult.findings" :key="finding.id" 
+                         class="bg-red-900/30 border border-red-700 rounded p-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-red-400 font-semibold">
+                                <i class="fas fa-exclamation-triangle mr-1"></i>
+                                {{ finding.vuln_type }} ({{ finding.vuln_subtype }})
+                            </span>
+                            <span :class="finding.severity === 'critical' ? 'bg-red-600' : finding.severity === 'high' ? 'bg-orange-600' : 'bg-yellow-600'" 
+                                  class="px-2 py-0.5 rounded text-xs uppercase">
+                                {{ finding.severity }}
+                            </span>
+                        </div>
+                        <p class="text-sm text-gray-300 mt-2">{{ finding.analysis }}</p>
+                        <p v-if="finding.payload" class="text-xs text-gray-400 mt-2 font-mono bg-black/30 p-2 rounded">
+                            Payload: {{ finding.payload }}
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- No findings -->
+                <div v-else class="text-center text-gray-500 py-2">
+                    <i class="fas fa-check-circle text-green-500 mr-1"></i>
+                    No vulnerabilities found after {{ triage.testResult.payloads_tested }} payload tests
+                </div>
+                
+                <!-- Injection points -->
+                <div v-if="triage.testResult.injection_points?.length" class="mt-2 text-xs text-gray-500">
+                    <span class="mr-1">Injection points:</span>
+                    <span v-for="ip in triage.testResult.injection_points" :key="ip" class="bg-gray-700 px-1 rounded mr-1">{{ ip }}</span>
+                </div>
+                
+                <!-- Test Details Toggle -->
+                <div v-if="triage.testResult.test_details?.length" class="mt-3">
+                    <button @click="triage.showTestDetails = !triage.showTestDetails" 
+                            class="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1">
+                        <i :class="triage.showTestDetails ? 'fa-chevron-down' : 'fa-chevron-right'" class="fas"></i>
+                        {{ triage.showTestDetails ? 'Hide' : 'Show' }} Test Details ({{ triage.testResult.test_details.length }} requests)
+                    </button>
+                    
+                    <!-- Test Details Content -->
+                    <div v-if="triage.showTestDetails" class="mt-2 space-y-3 max-h-96 overflow-y-auto">
+                        <div v-for="(detail, idx) in triage.testResult.test_details" :key="idx" 
+                             class="bg-gray-900/80 border border-gray-700 rounded p-3 text-xs">
+                            
+                            <!-- Request Header -->
+                            <div class="flex items-center justify-between mb-2 pb-2 border-b border-gray-700">
+                                <span class="font-semibold text-yellow-400">
+                                    <i class="fas fa-arrow-up mr-1"></i> Request #{{ idx + 1 }}
+                                    <span class="text-gray-500 ml-2">{{ detail.injection_point }} ({{ detail.encoding }})</span>
+                                </span>
+                                <div class="flex items-center gap-2">
+                                    <span v-if="detail.response_time_ms" class="text-gray-500">
+                                        {{ detail.response_time_ms }}ms
+                                    </span>
+                                    <span v-if="detail.response?.status_code" 
+                                          :class="detail.response.status_code < 400 ? 'text-green-400' : 'text-red-400'">
+                                        HTTP {{ detail.response.status_code }}
+                                    </span>
+                                    <span v-if="detail.finding" class="bg-red-600 text-white px-1.5 py-0.5 rounded">
+                                        <i class="fas fa-bug mr-1"></i>VULN
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <!-- Payload Used -->
+                            <div class="mb-2 bg-purple-900/30 p-2 rounded">
+                                <span class="text-gray-500">Payload:</span>
+                                <code class="ml-1 text-purple-300 break-all">{{ detail.payload }}</code>
+                            </div>
+                            
+                            <!-- Request URL -->
+                            <div v-if="detail.request" class="mb-2">
+                                <span class="text-gray-500">{{ detail.request.method }}</span>
+                                <code class="ml-1 text-blue-300 break-all">{{ detail.request.url }}</code>
+                                <!-- Cookie/Auth indicators -->
+                                <span v-if="detail.request.has_cookie" class="ml-2 px-1 py-0.5 bg-green-900/50 text-green-300 text-xs rounded">🍪 Cookie</span>
+                                <span v-if="detail.request.has_auth" class="ml-1 px-1 py-0.5 bg-blue-900/50 text-blue-300 text-xs rounded">🔑 Auth</span>
+                            </div>
+                            
+                            <!-- Request Headers (collapsed by default) -->
+                            <details v-if="detail.request?.headers" class="mb-2">
+                                <summary class="text-gray-500 cursor-pointer hover:text-gray-400">
+                                    Request Headers ({{ detail.request.headers_count || Object.keys(detail.request.headers).length }})
+                                    <span v-if="!detail.request.has_cookie" class="ml-2 text-red-400">⚠️ NO COOKIE!</span>
+                                </summary>
+                                <pre class="mt-1 bg-black/50 p-2 rounded overflow-x-auto text-green-300">{{ formatHeaders(detail.request.headers) }}</pre>
+                            </details>
+                            
+                            <!-- Request Body (if present) -->
+                            <details v-if="detail.request?.body_preview" class="mb-2">
+                                <summary class="text-gray-500 cursor-pointer hover:text-gray-400">Request Body</summary>
+                                <pre class="mt-1 bg-black/50 p-2 rounded overflow-x-auto text-yellow-300">{{ detail.request.body_preview }}</pre>
+                            </details>
+                            
+                            <!-- Response -->
+                            <div v-if="detail.response" class="mt-2 pt-2 border-t border-gray-700">
+                                <span class="text-cyan-400 font-semibold">
+                                    <i class="fas fa-arrow-down mr-1"></i> Response ({{ detail.response.body_length }} bytes)
+                                </span>
+                                
+                                <!-- Response Headers -->
+                                <details v-if="detail.response.headers" class="mt-2">
+                                    <summary class="text-gray-500 cursor-pointer hover:text-gray-400">Response Headers</summary>
+                                    <pre class="mt-1 bg-black/50 p-2 rounded overflow-x-auto text-green-300">{{ formatHeaders(detail.response.headers) }}</pre>
+                                </details>
+                                
+                                <!-- Response Body Preview (collapsed by default) -->
+                                <details v-if="detail.response.body_preview" class="mt-2" open>
+                                    <summary class="text-gray-500 cursor-pointer hover:text-gray-400">Response Body (preview - first 2KB)</summary>
+                                    <pre class="mt-1 bg-black/50 p-2 rounded overflow-x-auto text-gray-300 max-h-40 overflow-y-auto">{{ detail.response.body_preview }}</pre>
+                                </details>
+                                
+                                <!-- Full Response Body (expandable) -->
+                                <details v-if="detail.response.body_full && detail.response.body_length > 2000" class="mt-2">
+                                    <summary class="text-yellow-400 cursor-pointer hover:text-yellow-300">
+                                        <i class="fas fa-expand mr-1"></i> View Full Response ({{ detail.response.body_length }} bytes)
+                                    </summary>
+                                    <pre class="mt-1 bg-black/50 p-2 rounded overflow-x-auto text-gray-300 max-h-96 overflow-y-auto">{{ detail.response.body_full }}</pre>
+                                </details>
+                            </div>
+                            
+                            <!-- Error (if any) -->
+                            <div v-if="detail.error" class="mt-2 text-red-400">
+                                <i class="fas fa-exclamation-circle mr-1"></i> Error: {{ detail.error }}
+                            </div>
+                            
+                            <!-- Finding Info -->
+                            <div v-if="detail.finding" class="mt-2 bg-red-900/30 border border-red-700 rounded p-2">
+                                <span class="text-red-400 font-semibold">
+                                    <i class="fas fa-bug mr-1"></i> {{ detail.finding.vuln_type }}
+                                </span>
+                                <span class="text-gray-400 ml-2">{{ detail.finding.severity }} ({{ detail.finding.confidence }}% confidence)</span>
+                                <p v-if="detail.finding.analysis" class="text-gray-300 mt-1">{{ detail.finding.analysis }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Multi-Round Attack Results (if running or completed) -->
+            <div v-if="triage.multiRoundRunning || triage.multiRoundResult" 
+                 class="mb-3 bg-purple-900/30 rounded-lg p-4 border border-purple-700">
+                <div class="flex items-center justify-between mb-3">
+                    <h4 class="text-sm font-semibold text-purple-400">
+                        <i class="fas fa-layer-group mr-2"></i>Multi-Round Attack
+                    </h4>
+                    <span v-if="triage.multiRoundRunning" class="text-purple-400 text-xs">
+                        <i class="fas fa-spinner fa-spin mr-1"></i>{{ triage.multiRoundStatus || 'Running...' }}
+                    </span>
+                    <span v-else-if="triage.multiRoundResult" class="text-green-400 text-xs">
+                        <i class="fas fa-check-circle mr-1"></i>Completed
+                    </span>
+                </div>
+                
+                <!-- Running status -->
+                <div v-if="triage.multiRoundRunning" class="text-center py-4">
+                    <div class="inline-flex items-center gap-3 bg-purple-800/30 px-4 py-2 rounded-lg">
+                        <i class="fas fa-spinner fa-spin text-2xl text-purple-400"></i>
+                        <div class="text-left">
+                            <p class="text-white font-semibold">Attack in Progress</p>
+                            <p class="text-sm text-gray-400">{{ triage.multiRoundStatus }}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Results -->
+                <div v-else-if="triage.multiRoundResult">
+                    <!-- Summary Stats -->
+                    <div class="grid grid-cols-4 gap-3 mb-4">
+                        <div class="bg-gray-800/50 rounded p-2 text-center">
+                            <p class="text-lg font-bold text-white">{{ triage.multiRoundResult.total_rounds || 0 }}</p>
+                            <p class="text-xs text-gray-400">Rounds</p>
+                        </div>
+                        <div class="bg-gray-800/50 rounded p-2 text-center">
+                            <p class="text-lg font-bold text-cyan-400">{{ triage.multiRoundResult.total_attempts || 0 }}</p>
+                            <p class="text-xs text-gray-400">Attempts</p>
+                        </div>
+                        <div class="bg-gray-800/50 rounded p-2 text-center">
+                            <p class="text-lg font-bold" :class="triage.multiRoundResult.findings_count > 0 ? 'text-red-400' : 'text-green-400'">
+                                {{ triage.multiRoundResult.findings_count || 0 }}
+                            </p>
+                            <p class="text-xs text-gray-400">Findings</p>
+                        </div>
+                        <div class="bg-gray-800/50 rounded p-2 text-center">
+                            <p class="text-lg font-bold text-gray-300">{{ Math.round((triage.multiRoundResult.total_time_ms || 0) / 1000) }}s</p>
+                            <p class="text-xs text-gray-400">Duration</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Message -->
+                    <p class="text-sm text-gray-300 mb-3">{{ triage.multiRoundResult.message }}</p>
+                    
+                    <!-- Download Dump Button -->
+                    <button @click="viewMultiRoundHistory(triage)" 
+                            class="text-xs bg-purple-600/30 text-purple-300 hover:bg-purple-600/50 px-3 py-1.5 rounded flex items-center gap-2 border border-purple-500/30">
+                        <i class="fas fa-download"></i>
+                        Download Full Attack Dump
+                    </button>
+                </div>
+            </div>
+            
+            <!-- AI Triage Response Section -->
+            <div class="mb-4 bg-gray-800/70 rounded-lg p-4 border border-gray-700">
+                <div class="flex items-center justify-between mb-3">
+                    <h4 class="text-sm font-semibold text-cyan-400">
+                        <i class="fas fa-brain mr-2"></i>AI Triage Response
+                    </h4>
+                    <span class="text-xs text-gray-500">{{ triage.model || 'Unknown Model' }} • {{ triage.tokens || 0 }} tokens</span>
+                </div>
+                
+                <!-- Reason (AI Analysis) -->
+                <div class="mb-3">
+                    <p class="text-xs text-gray-400 uppercase mb-1">Analysis</p>
+                    <p class="text-sm text-gray-300 bg-gray-900/50 p-3 rounded whitespace-pre-wrap">{{ triage.reason || 'No detailed analysis provided' }}</p>
+                </div>
+                
+                <!-- Suggested Vulns -->
+                <div v-if="triage.suggested_vulns && triage.suggested_vulns.length" class="mb-3">
+                    <p class="text-xs text-gray-400 uppercase mb-1">Suggested Vulnerabilities to Test</p>
+                    <div class="flex flex-wrap gap-2">
+                        <span v-for="vuln in triage.suggested_vulns" :key="vuln" 
+                              class="bg-purple-600/30 text-purple-300 px-3 py-1 rounded text-sm border border-purple-500/50">
+                            <i class="fas fa-bug mr-1"></i>{{ vuln }}
+                        </span>
+                    </div>
+                </div>
+                
+                <!-- Attack Surface Hints (if available) -->
+                <div v-if="triage.attack_surface_hints && triage.attack_surface_hints.length" class="mb-3">
+                    <p class="text-xs text-gray-400 uppercase mb-1">Attack Surface Hints</p>
+                    <ul class="text-sm text-yellow-300 bg-yellow-900/20 p-2 rounded list-disc list-inside">
+                        <li v-for="hint in triage.attack_surface_hints" :key="hint">{{ hint }}</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Send to Strategist Button -->
+            <div v-if="triage.interesting && !triage.tested" class="mb-4">
+                <button @click="sendToStrategist(triage)" 
+                        :disabled="triage.testing"
+                        class="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 disabled:from-gray-600 disabled:to-gray-700 text-white px-4 py-3 rounded-lg font-semibold transition flex items-center justify-center gap-2">
+                    <i v-if="triage.testing" class="fas fa-spinner fa-spin"></i>
+                    <i v-else class="fas fa-rocket"></i>
+                    <span v-if="triage.testing">Sending to Strategist...</span>
+                    <span v-else>Send to Strategist & Attack</span>
+                </button>
+                <p class="text-xs text-gray-500 text-center mt-1">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    The AI Strategist will create an attack plan and execute payloads
+                </p>
+            </div>
+            
+            <!-- Already Tested Indicator -->
+            <div v-if="triage.tested" class="mb-4 bg-green-900/30 border border-green-700 rounded-lg p-3 text-center">
+                <i class="fas fa-check-circle text-green-400 mr-2"></i>
+                <span class="text-green-300">Already sent to Strategist</span>
+            </div>
+            
+            <!-- Footer -->
+            <div class="flex items-center justify-between text-xs text-gray-500 pt-2 border-t border-gray-700">
+                <span><i class="fas fa-robot mr-1"></i>{{ triage.model || 'Unknown Model' }}</span>
+                <span><i class="fas fa-coins mr-1"></i>{{ triage.tokens || 0 }} tokens</span>
+                <span><i class="fas fa-tag mr-1"></i>{{ triage.new_status }}</span>
+            </div>
+        </div>
+        
+        <!-- Empty State -->
+        <div v-if="triageHistory.length === 0" class="glass rounded-xl p-12 text-center">
+            <i class="fas fa-brain text-5xl text-gray-600 mb-4"></i>
+            <h3 class="text-xl font-semibold text-gray-400">No AI Triage Results Yet</h3>
+            <p class="text-gray-500 mt-2">Click "AI Triage" on an endpoint to analyze it</p>
+        </div>
+    </div>
+</div>
+
+                </div>
+
+                <!-- PIVOTAGENT VIEW -->
+                <div v-else-if="currentView === 'pivotagent'" class="view-pivotagent">
+<!-- Pivot Agent View Template -->
+<div class="space-y-4 fade-in">
+    <!-- Header Controls -->
+    <div class="glass rounded-xl p-4 flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+            <span class="text-lg font-semibold text-purple-400">
+                <i class="fas fa-robot mr-2"></i>AI Pivot Agent
+            </span>
+            <span v-if="pivotAgentActive" class="flex items-center text-green-400 text-sm">
+                <span class="w-2 h-2 bg-green-500 rounded-full mr-2 pulse-dot"></span>
+                Running... <span v-if="pivotIteration" class="ml-2 text-yellow-400">(Iteration {{ pivotIteration }})</span>
+            </span>
+        </div>
+        <div class="flex items-center space-x-2">
+            <select v-model="selectedPivotLog" class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm min-w-[300px]">
+                <option value="">Select a request to analyze...</option>
+                <option v-for="log in availableLogs" :key="log.id" :value="log.id">
+                    [{{ log.score }}] {{ log.method }} {{ log.host }}{{ log.path.substring(0, 40) }}{{ log.path.length > 40 ? '...' : '' }}
+                </option>
+            </select>
+            <button @click="launchPivotAgent" :disabled="!selectedPivotLog || pivotAgentActive"
+                    class="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 disabled:cursor-not-allowed px-4 py-2 rounded-lg text-sm font-medium transition">
+                <i class="fas fa-play mr-1"></i> Launch Agent
+            </button>
+            <!-- Emergency Stop Button - Highly Visible -->
+            <button @click="stopPivotAgent" v-if="pivotAgentActive"
+                    class="bg-red-600 hover:bg-red-500 px-5 py-2 rounded-lg text-sm font-bold transition animate-pulse border-2 border-red-400 shadow-lg shadow-red-500/50"
+                    title="⚠️ Emergency Stop - Stops the agent immediately to prevent excess API usage">
+                <i class="fas fa-hand-paper mr-1"></i> 🛑 STOP
+            </button>
+        </div>
+    </div>
+    
+    <!-- Live Console -->
+    <div class="glass rounded-xl overflow-hidden">
+        <div class="bg-gray-900 px-4 py-2 border-b border-gray-700 flex items-center justify-between">
+            <span class="text-sm text-gray-400">
+                <i class="fas fa-terminal mr-2"></i>Live Agent Thoughts
+            </span>
+            <button @click="clearPivotLogs" class="text-xs text-gray-500 hover:text-gray-300">
+                <i class="fas fa-trash mr-1"></i>Clear
+            </button>
+        </div>
+        <div ref="pivotConsole" class="bg-gray-950 p-4 h-[600px] overflow-y-auto font-mono text-sm">
+            <div v-for="(entry, idx) in pivotLogs" :key="idx" 
+                 :class="getPivotLogClass(entry)" class="py-1 border-b border-gray-800/50">
+                <span class="text-gray-600">[{{ formatPivotTime(entry.timestamp) }}]</span>
+                <span :class="getPivotNodeClass(entry.node)" class="mx-1">[{{ entry.node }}]</span>
+                <span :class="getPivotLevelClass(entry.level)">{{ entry.message }}</span>
+            </div>
+            <div v-if="!pivotLogs || pivotLogs.length === 0" class="text-gray-600 text-center py-8">
+                <i class="fas fa-terminal text-3xl mb-2"></i>
+                <p>No agent activity yet. Select a log and launch the agent.</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- HTTP Request History Panel -->
+    <div class="glass rounded-xl overflow-hidden">
+        <div class="bg-gray-900 px-4 py-2 border-b border-gray-700 flex items-center justify-between cursor-pointer"
+             @click="showHttpPanel = !showHttpPanel">
+            <span class="text-sm text-gray-400">
+                <i class="fas fa-exchange-alt mr-2"></i>HTTP Requests History 
+                <span class="text-blue-400 ml-1">({{ httpRequestHistory.length }})</span>
+            </span>
+            <i :class="showHttpPanel ? 'fa-chevron-up' : 'fa-chevron-down'" class="fas text-gray-500"></i>
+        </div>
+        <div v-show="showHttpPanel" class="bg-gray-950 p-4 max-h-[500px] overflow-y-auto">
+            <div v-if="httpRequestHistory.length === 0" class="text-gray-600 text-center py-4">
+                No HTTP requests yet
+            </div>
+            <div v-for="(req, idx) in httpRequestHistory" :key="idx" 
+                 class="mb-4 bg-gray-900 rounded-lg p-3 border border-gray-800 hover:border-blue-500/50 cursor-pointer"
+                 @click="selectedHttpRequest = selectedHttpRequest === req ? null : req">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <span :class="{
+                            'text-green-400': req.method === 'GET',
+                            'text-blue-400': req.method === 'POST',
+                            'text-yellow-400': req.method === 'PUT',
+                            'text-red-400': req.method === 'DELETE'
+                        }" class="font-mono font-bold text-sm">{{ req.method }}</span>
+                        <span class="text-gray-300 text-sm font-mono truncate max-w-md">{{ req.url }}</span>
+                    </div>
+                    <span :class="{
+                        'text-green-400': req.status >= 200 && req.status < 300,
+                        'text-yellow-400': req.status >= 300 && req.status < 400,
+                        'text-red-400': req.status >= 400 || req.status === 0
+                    }" class="font-mono font-bold">{{ req.status || 'ERR' }}</span>
+                </div>
+                <div class="text-xs text-gray-500 mt-1">
+                    Step: <span class="text-purple-400">{{ req.step }}</span>
+                    <span class="ml-2">Headers: {{ Object.keys(req.headers || {}).length }}</span>
+                </div>
+                
+                <!-- Expanded details -->
+                <div v-if="selectedHttpRequest === req" class="mt-3 space-y-2 border-t border-gray-700 pt-3">
+                    <div>
+                        <div class="text-xs text-gray-500 mb-1">📤 Request Headers:</div>
+                        <pre class="bg-gray-950 p-2 rounded text-xs font-mono text-green-300 overflow-x-auto max-h-32 overflow-y-auto">{{ JSON.stringify(req.headers, null, 2) }}</pre>
+                    </div>
+                    <div v-if="req.body">
+                        <div class="text-xs text-gray-500 mb-1">📤 Request Body:</div>
+                        <pre class="bg-gray-950 p-2 rounded text-xs font-mono text-yellow-300 overflow-x-auto max-h-32 overflow-y-auto">{{ req.body }}</pre>
+                    </div>
+                    <div>
+                        <div class="text-xs text-gray-500 mb-1">📥 Response Preview:</div>
+                        <pre class="bg-gray-950 p-2 rounded text-xs font-mono text-blue-300 overflow-x-auto max-h-40 overflow-y-auto whitespace-pre-wrap">{{ req.response_preview || req.response_body || 'No response body' }}</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- LLM Responses Panel -->
+    <div class="glass rounded-xl overflow-hidden">
+        <div class="bg-gray-900 px-4 py-2 border-b border-gray-700 flex items-center justify-between cursor-pointer"
+             @click="showLlmPanel = !showLlmPanel">
+            <span class="text-sm text-gray-400">
+                <i class="fas fa-brain mr-2"></i>LLM Responses 
+                <span class="text-purple-400 ml-1">({{ llmResponses.length }})</span>
+            </span>
+            <i :class="showLlmPanel ? 'fa-chevron-up' : 'fa-chevron-down'" class="fas text-gray-500"></i>
+        </div>
+        <div v-show="showLlmPanel" class="bg-gray-950 p-4 max-h-[600px] overflow-y-auto">
+            <div v-if="llmResponses.length === 0" class="text-gray-600 text-center py-4">
+                No LLM responses yet
+            </div>
+            <div v-for="(llm, idx) in llmResponses" :key="idx"
+                 class="mb-4 bg-gray-900 rounded-lg p-3 border border-gray-800 hover:border-purple-500/50 cursor-pointer"
+                 @click="selectedLlmResponse = selectedLlmResponse === llm ? null : llm">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-purple-400 font-semibold">{{ llm.node }}</span>
+                        <span class="text-gray-500 text-xs">{{ llm.model || 'claude' }}</span>
+                    </div>
+                    <span class="text-xs text-gray-500">{{ formatPivotTime(llm.timestamp) }}</span>
+                </div>
+                <div class="text-xs text-gray-400 mt-1">
+                    Tokens: <span class="text-yellow-400">{{ llm.tokens || '?' }}</span>
+                    <span v-if="llm.cost" class="ml-2">Cost: <span class="text-green-400">${{ llm.cost }}</span></span>
+                </div>
+                
+                <!-- Collapsed preview -->
+                <div v-if="selectedLlmResponse !== llm" class="mt-2 text-sm text-gray-400 truncate">
+                    {{ (llm.response || llm.content || '').substring(0, 150) }}...
+                </div>
+                
+                <!-- Expanded full response -->
+                <div v-if="selectedLlmResponse === llm" class="mt-3 border-t border-gray-700 pt-3">
+                    <div v-if="llm.prompt" class="mb-3">
+                        <div class="text-xs text-gray-500 mb-1">📤 Prompt (truncated):</div>
+                        <pre class="bg-gray-950 p-2 rounded text-xs font-mono text-blue-300 overflow-x-auto max-h-40 overflow-y-auto whitespace-pre-wrap">{{ (llm.prompt || '').substring(0, 2000) }}</pre>
+                    </div>
+                    <div>
+                        <div class="text-xs text-gray-500 mb-1">📥 Full Response:</div>
+                        <pre class="bg-gray-950 p-2 rounded text-xs font-mono text-green-300 overflow-x-auto max-h-96 overflow-y-auto whitespace-pre-wrap">{{ llm.response || llm.content || 'No response' }}</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Findings from Pivot Agent -->
+    <div v-if="pivotFindings && pivotFindings.length > 0" class="space-y-3">
+        <h3 class="text-lg font-semibold text-red-400">
+            <i class="fas fa-bug mr-2"></i>Agent Findings ({{ pivotFindings.length }})
+        </h3>
+        <div v-for="finding in pivotFindings" :key="finding.id" 
+             class="glass rounded-xl p-4 border-l-4 border-red-500">
+            <div class="flex items-start justify-between">
+                <div>
+                    <span class="text-lg font-semibold text-red-400">{{ finding.vuln_type || 'IDOR Detected' }}</span>
+                    <span class="ml-2 text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded uppercase">{{ finding.severity || 'high' }}</span>
+                </div>
+                <span class="text-xs text-gray-500">{{ formatPivotTime(finding.timestamp) }}</span>
+            </div>
+            <p class="text-gray-400 mt-2 text-sm">{{ finding.endpoint || finding.url }}</p>
+            <div v-if="finding.evidence" class="mt-2 bg-gray-900 p-2 rounded text-xs font-mono text-yellow-400">
+                {{ finding.evidence }}
+            </div>
+            <div v-if="finding.data" class="mt-2 text-xs text-gray-500">
+                <span v-if="finding.data.param">Parameter: <code class="text-purple-400">{{ finding.data.param }}</code></span>
+                <span v-if="finding.data.original_value" class="ml-2">Original: {{ finding.data.original_value }} → {{ finding.data.new_value }}</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Empty State for findings -->
+    <div v-else class="glass rounded-xl p-8 text-center">
+        <i class="fas fa-shield-alt text-4xl text-gray-600 mb-3"></i>
+        <h3 class="text-lg font-semibold text-gray-400">No Findings Yet</h3>
+        <p class="text-gray-500 text-sm mt-1">Launch the agent to start hunting for IDOR vulnerabilities</p>
+    </div>
+</div>
+
+                </div>
+
+<!-- ======================== VIEWS END ======================== -->
+                
+            </div>
+        </main>
+        
+        <!-- Request Detail Modal -->
+        <div v-if="selectedRequest" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50" @click.self="selectedRequest = null">
+            <div class="bg-gray-900 rounded-xl w-3/4 max-h-[80vh] overflow-hidden">
+                <div class="p-4 border-b border-gray-800 flex items-center justify-between">
+                    <h3 class="font-semibold">Request Details</h3>
+                    <button @click="selectedRequest = null" class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="p-6 overflow-y-auto max-h-[calc(80vh-60px)]">
+                    <pre class="bg-gray-950 p-4 rounded-lg text-sm overflow-x-auto">{{ JSON.stringify(selectedRequest, null, 2) }}</pre>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Endpoint Detail Modal -->
+        <div v-if="selectedEndpoint" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="selectedEndpoint = null">
+            <div class="glass rounded-xl p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold">
+                        <span :class="methodClass(selectedEndpoint.method)" class="text-sm font-mono px-2 py-0.5 rounded mr-2">{{ selectedEndpoint.method }}</span>
+                        Endpoint Details
+                    </h3>
+                    <button @click="selectedEndpoint = null" class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <p class="text-xs text-gray-400 uppercase mb-1">Template</p>
+                        <p class="font-mono text-sm bg-gray-800 p-2 rounded">{{ selectedEndpoint.host }}{{ selectedEndpoint.path_template }}</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-xs text-gray-400 uppercase mb-1">Status</p>
+                            <span :class="endpointStatusClass(selectedEndpoint.status)" class="text-sm px-2 py-1 rounded">{{ selectedEndpoint.status }}</span>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-400 uppercase mb-1">Score</p>
+                            <span :class="scoreClass(selectedEndpoint.heuristic_score)" class="text-xl font-bold">{{ selectedEndpoint.heuristic_score }}</span>
+                        </div>
+                    </div>
+                    <div v-if="selectedEndpoint.param_names && selectedEndpoint.param_names.length">
+                        <p class="text-xs text-gray-400 uppercase mb-1">Parameters</p>
+                        <div class="flex flex-wrap gap-1">
+                            <span v-for="param in selectedEndpoint.param_names" :key="param" class="bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded text-xs">{{ param }}</span>
+                        </div>
+                    </div>
+                    <div v-if="selectedEndpoint.potential_vulns && selectedEndpoint.potential_vulns.length">
+                        <p class="text-xs text-gray-400 uppercase mb-1">Potential Vulnerabilities</p>
+                        <div class="flex flex-wrap gap-1">
+                            <span v-for="vuln in selectedEndpoint.potential_vulns" :key="vuln" class="bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded text-xs">{{ vuln }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+    
+    <script type="module">
+        import { createGhostHunterApp } from '/static/js/app.js';
+        createGhostHunterApp().mount('#app');
+    </script>
+</body>
+</html>

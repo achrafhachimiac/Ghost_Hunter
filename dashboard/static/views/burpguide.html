@@ -1,0 +1,81 @@
+<!-- Burp Guide View Template -->
+<div class="space-y-6 fade-in">
+    <div class="glass rounded-xl p-6">
+        <h3 class="text-xl font-semibold mb-3 flex items-center">
+            <i class="fab fa-buromobelexperte mr-3 text-orange-400"></i>
+            Burp plugin setup guide
+        </h3>
+        <p class="text-gray-300 text-sm">
+            This local guide explains how to install Jython, load the Ghost-Hunter Burp plugin, connect it to the dashboard,
+            and start sending Burp-scoped traffic into Ghost-Hunter.
+        </p>
+    </div>
+
+    <div class="glass rounded-xl p-6">
+        <h4 class="text-lg font-semibold mb-4 text-yellow-400">1. Download Jython standalone</h4>
+        <div class="space-y-3 text-sm text-gray-300">
+            <p>Burp needs the standalone Jython JAR to run Python extensions.</p>
+            <div class="bg-gray-900 rounded-lg p-4 font-mono text-sm text-cyan-300 break-all">
+                https://www.jython.org/download
+            </div>
+            <p>Recommended file: <span class="font-mono">jython-standalone-2.7.x.jar</span></p>
+        </div>
+    </div>
+
+    <div class="glass rounded-xl p-6">
+        <h4 class="text-lg font-semibold mb-4 text-green-400">2. Load Jython into Burp</h4>
+        <ol class="list-decimal ml-5 space-y-2 text-sm text-gray-300">
+            <li>Open Burp Suite.</li>
+            <li>Go to <span class="font-mono">Extender → Options</span>.</li>
+            <li>Find the <span class="font-mono">Python Environment</span> section.</li>
+            <li>Select the downloaded <span class="font-mono">jython-standalone-2.7.x.jar</span>.</li>
+        </ol>
+    </div>
+
+    <div class="glass rounded-xl p-6">
+        <h4 class="text-lg font-semibold mb-4 text-purple-400">3. Install the Ghost-Hunter Burp plugin</h4>
+        <ol class="list-decimal ml-5 space-y-2 text-sm text-gray-300">
+            <li>Go to <span class="font-mono">Extender → Extensions</span>.</li>
+            <li>Click <span class="font-mono">Add</span>.</li>
+            <li>Extension type: <span class="font-mono">Python</span>.</li>
+            <li>Select this file:</li>
+        </ol>
+        <div class="bg-gray-900 rounded-lg p-4 font-mono text-sm text-green-300 mt-3 break-all">
+            burp_extension/ghost_hunter.py
+        </div>
+    </div>
+
+    <div class="glass rounded-xl p-6">
+        <h4 class="text-lg font-semibold mb-4 text-blue-400">4. Connect Burp to the local dashboard</h4>
+        <ol class="list-decimal ml-5 space-y-2 text-sm text-gray-300">
+            <li>Start Ghost-Hunter with <span class="font-mono">./hunt.sh start</span>.</li>
+            <li>Open the Burp tab named <span class="font-mono">Ghost-Hunter</span>.</li>
+            <li>Set the API URL to:</li>
+        </ol>
+        <div class="bg-gray-900 rounded-lg p-4 font-mono text-sm text-cyan-300 mt-3 break-all">
+            http://127.0.0.1:1010
+        </div>
+        <p class="text-sm text-gray-300 mt-3">Then click <span class="font-mono">Save &amp; Test Connection</span>.</p>
+    </div>
+
+    <div class="glass rounded-xl p-6">
+        <h4 class="text-lg font-semibold mb-4 text-red-400">5. Important: define Burp scope first</h4>
+        <ol class="list-decimal ml-5 space-y-2 text-sm text-gray-300">
+            <li>Open <span class="font-mono">Target → Scope</span> in Burp.</li>
+            <li>Add only the domains and paths you are authorized to test.</li>
+            <li>Browse the target normally.</li>
+            <li>The plugin will forward Burp-scoped traffic to Ghost-Hunter.</li>
+        </ol>
+    </div>
+
+    <div class="glass rounded-xl p-6">
+        <h4 class="text-lg font-semibold mb-4 text-cyan-400">Quick checklist</h4>
+        <div class="space-y-2 text-sm text-gray-300">
+            <p>✅ Ghost-Hunter running: <span class="font-mono">./hunt.sh start</span></p>
+            <p>✅ Burp plugin loaded: <span class="font-mono">burp_extension/ghost_hunter.py</span></p>
+            <p>✅ Jython configured in Burp</p>
+            <p>✅ Burp scope configured</p>
+            <p>✅ API URL set to <span class="font-mono">http://127.0.0.1:1010</span></p>
+        </div>
+    </div>
+</div>

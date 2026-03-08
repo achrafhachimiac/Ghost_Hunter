@@ -1,0 +1,15 @@
+groq:
+  api_key: "YOUR_GROQ_API_KEY"
+  models:
+    triage: "llama-3.1-8b-instant"
+    strategy: "llama-3.3-70b-versatile"
+
+openrouter:
+  api_key: "YOUR_OPENROUTER_API_KEY"
+  models:
+    triage: "anthropic/claude-3.5-haiku"
+    strategy: "anthropic/claude-3.5-sonnet"
+
+openai:
+  api_key: "YOUR_OPENAI_API_KEY"
+  model: "text-embedding-3-small"

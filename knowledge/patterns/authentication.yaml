@@ -1,0 +1,44 @@
+# Authentication Vulnerability Patterns
+name: authentication
+description: Patterns for authentication bypass and weaknesses
+
+patterns:
+  - name: password_reset_token_leak
+    indicators:
+      - "password_reset"
+      - "forgot_password"
+      - "reset_token"
+    test_cases:
+      - "Token in URL parameters"
+      - "Token in response body"
+      - "Predictable token generation"
+      
+  - name: session_fixation
+    indicators:
+      - "session"
+      - "JSESSIONID"
+      - "PHPSESSID"
+    test_cases:
+      - "Session ID unchanged after login"
+      - "Session ID in URL"
+      
+  - name: oauth_misconfig
+    indicators:
+      - "oauth"
+      - "redirect_uri"
+      - "callback"
+      - "state"
+    test_cases:
+      - "Open redirect in callback"
+      - "Missing state parameter"
+      - "Token leakage via referrer"
+      
+  - name: jwt_weaknesses
+    indicators:
+      - "Bearer"
+      - "eyJ"
+      - "jwt"
+    test_cases:
+      - "Algorithm confusion (none/HS256)"
+      - "Weak secret key"
+      - "Missing expiration"
