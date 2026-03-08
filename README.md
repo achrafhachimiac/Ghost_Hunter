@@ -1,3 +1,5 @@
+![Ghost-Hunter dashboard](docs/images/hero.png)
+
 # Ghost-Hunter
 
 AI-powered bug bounty command center for traffic capture, endpoint triage, adaptive payload strategy, and execution tracking.
